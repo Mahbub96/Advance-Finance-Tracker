@@ -1,2299 +1,1858 @@
-# Personal Finance — Testing Strategy
+# Personal Finance — Performance Engineering
 
-**Document:** `TESTING.md`
-**Version:** 1.0
-**Status:** Approved Baseline
-**Last Updated:** 2026-08-14
-**Product:** Personal Finance
-**Repository:** Advance-Finance-Tracker
-**Architecture:** pnpm Monorepo
-**Mobile:** React Native + Expo + TypeScript
-**Backend:** NestJS + TypeScript
-**Database:** PostgreSQL + Prisma
-**Local Database:** SQLite
+**Document:** `PERFORMANCE.md`  
+**Version:** 1.0  
+**Status:** Approved Baseline  
+**Last Updated:** 2026-08-14  
+**Product:** Personal Finance  
+**Repository:** Advance-Finance-Tracker  
+**Architecture:** pnpm Monorepo  
+**Mobile:** React Native + Expo + TypeScript  
+**Backend:** NestJS + TypeScript  
+**Database:** PostgreSQL + Prisma  
+**Local Database:** SQLite  
+**Cache / Queue:** Redis  
+**Package Manager:** pnpm  
 
 ---
 
 # 1. Purpose
 
-This document defines the production testing strategy for the Personal Finance application.
+This document defines the performance strategy for the personal finance application.
 
-Because the system manages financial data, testing prioritizes:
+It specifies:
 
 ```text
-Financial Correctness
-Security
-Data Integrity
-Offline Reliability
+Priorities
+Budgets
+Latency classes
+Mobile performance
+SQLite performance
+API performance
+PostgreSQL performance
+Caching
+Background jobs
 Synchronization
-Recoverability
-Performance
+Forecasting
+AI latency
+Large-dataset strategy
+Load testing
+Monitoring
+Acceptance criteria
 ```
 
-The objective is:
+Testing *how* to measure belongs in `TESTING.md`.
 
-> **Every important financial action must remain correct across the UI, local database, API, cloud database, synchronization, analytics, reports, notifications, and recovery paths.**
+How to ship belongs in `DEPLOYMENT.md`.
 
 ---
 
-# 2. Testing Principles
-
-The project follows:
+# 2. Performance Principles
 
 ```text
-Test Early
-Test Deterministically
-Test Critical Paths Deeply
-Test Failure Paths
-Test Security Boundaries
-Test Offline Behavior
-Test Cross-Module Effects
+Correctness before speed
+Frequent paths before rare paths
+Local-first before cloud
+Deterministic finance before AI
+Measure before optimizing
+Do not cache financial truth
+Indexes must match real queries
 ```
 
-A passing UI test alone is not sufficient for a financial feature.
+A fast incorrect balance is a defect, not a win.
 
 ---
 
-# 3. Test Layers
+# 3. Performance Priorities
 
-The project should use:
+From `SYSTEM_ARCHITECTURE.md`:
 
 ```text
-Static Analysis
-Unit Tests
-Component Tests
-Integration Tests
-Database Tests
-API Contract Tests
-Synchronization Tests
-AI Evaluation Tests
-Forecast / ML Tests
-Security Tests
-Performance Tests
-End-to-End Tests
-Release Smoke Tests
+1. Transaction entry
+2. Navigation
+3. Local list rendering
+4. Search
+5. Dashboard
+6. Analytics
+7. AI
 ```
+
+API-side order from `API.md`:
+
+```text
+1. Transaction creation
+2. Transaction list
+3. Account balance
+4. Dashboard
+5. Budget summary
+6. Analytics
+7. Reports
+8. AI
+9. Large exports
+```
+
+The most frequent operations must remain the fastest.
 
 ---
 
-# 4. Test Pyramid
+# 4. What Performance Is Not
 
-Preferred distribution:
-
-```text
-                 E2E
-              /       \
-         Integration   Contract
-          /      \       /
-       Unit      Domain  API
-          \       /
-           Fast Tests
-```
-
-Most behavior should be verified through fast unit/domain tests.
-
-The smaller number of E2E tests should focus on critical user journeys.
-
----
-
-# 5. Static Quality Gates
-
-Before runtime tests:
+Performance work must not:
 
 ```text
-Lint
-Typecheck
-Formatting Check
-Dependency Validation
-```
-
-Example:
-
-```text
-pnpm lint
-pnpm typecheck
-```
-
-The exact command names should remain defined by the repository scripts.
-
----
-
-# 6. Unit Tests
-
-Unit tests verify isolated behavior.
-
-High-value unit-test targets:
-
-```text
-Money Calculations
-Budget Calculations
-Goal Progress
-Repayment Calculations
-Account Balance
-Recurring Date Calculation
-Percentage Calculation
-Date Range Calculation
-Risk Classification
-Validation Rules
-Formatting Helpers
+Weaken financial correctness
+Hide rounding errors
+Skip validation
+Drop sync operations
+Use JS number as money
+Block core flows on an LLM
+Treat Redis as the ledger
+Load entire history into the UI
 ```
 
 ---
 
-# 7. Unit Test Requirements
+# 5. Measurement Philosophy
 
-A unit test should be:
+Budgets in this document are **targets**, not marketing claims.
+
+Exact numbers must be validated on:
 
 ```text
-Fast
-Deterministic
-Isolated
-Readable
+Real devices
+Production-like datasets
+Controlled clocks
+Repeatable fixtures
 ```
 
-Avoid unnecessary:
+Until measured, treat numbers as design budgets.
+
+See `TESTING.md` for performance, load, and stress test layers.
+
+---
+
+# 6. Latency Classes
+
+```text
+Instant     < 100 ms perceived
+Interactive < 300 ms
+Acceptable  < 1 s
+Slow        1–3 s with feedback
+Async       > 3 s must not block the request or UI
+```
+
+Map features to classes:
+
+```text
+Save transaction          Instant / Interactive
+Tab navigation            Instant
+Account balance read      Instant
+Transaction list page     Interactive
+Local search              Interactive
+Home totals               Interactive
+Standard local report     Acceptable
+Cloud report              Acceptable or Async
+Forecast refresh          Async
+AI insight                Async
+PDF / export              Async
+Full sync catch-up        Async with progress
+```
+
+---
+
+# 7. Device Classes
+
+Design and test against:
+
+```text
+Low-end Android
+Mid-range Android
+High-end Android
+```
+
+Low-end is the budget that matters.
+
+Future iOS has a separate device matrix. Do not assume desktop-class RAM.
+
+---
+
+# 8. Dataset Classes
+
+```text
+Small     < 500 transactions
+Typical   500–3,000
+Large     10,000+
+Heavy     multi-year, many accounts, receipts
+```
+
+Local architecture must remain usable at **10,000+ transactions** and be capable of growing beyond that.
+
+---
+
+# 9. Performance Scope by Phase
+
+Phase 3 (current) is local-first:
+
+```text
+SQLite
+Mobile UI
+Derived balances
+Health API only
+```
+
+Phase 6 adds:
+
+```text
+Auth latency
+Sync throughput
+PostgreSQL
+Redis jobs
+Object storage
+```
+
+Do not pretend cloud budgets are in force before cloud exists. Write the budgets now so later work does not invent them under pressure.
+
+---
+
+# 10. Mobile Performance Scope
+
+Mobile performance covers:
+
+```text
+Cold start
+Warm start
+Navigation
+Transaction entry
+Lists
+Search
+Dashboard
+Memory
+Battery
+SQLite
+Rendering
+```
+
+The network must not sit on the critical path of routine transaction entry.
+
+---
+
+# 11. Cold Start
+
+Cold start should reach a usable first screen quickly.
+
+```text
+Launch
+  ↓
+Restore SQLite connection
+  ↓
+Read settings / onboarding flag
+  ↓
+Show Home or Onboarding
+```
+
+Do not:
+
+```text
+Run full analytics on launch
+Call AI on launch
+Download the full cloud ledger on launch
+Parse every receipt on launch
+```
+
+Heavy work after first paint.
+
+---
+
+# 12. Warm Start
+
+Returning to the app should restore:
+
+```text
+Last route where safe
+Open database
+Current account context
+```
+
+Avoid re-running onboarding or rebuilding the entire in-memory ledger.
+
+---
+
+# 13. Navigation Performance
+
+Tab switches and stack pushes must feel instant.
+
+```text
+Home
+Add
+Transactions
+Analytics
+More
+```
+
+Do not refetch or recompute the world on every tab focus.
+
+Keep screens independently loadable. Shared finance state should already be in the local store.
+
+---
+
+# 14. Transaction Entry Performance
+
+This is the highest-priority interactive path.
+
+```text
+Open Add
+  ↓
+Choose type / account / category
+  ↓
+Enter amount
+  ↓
+Save
+  ↓
+SQLite write
+  ↓
+Immediate local confirmation
+```
+
+Save must not wait for:
 
 ```text
 Network
-Real File Storage
-Live AI
-Live Email Provider
-Live Push Provider
+AI categorization
+Insight refresh
+Push
+Email
+Report rebuild
 ```
 
-dependencies.
-
----
-
-# 8. Financial Domain Tests
-
-Financial business rules require strong automated coverage.
-
-Examples:
-
-```text
-calculateAccountBalance()
-calculateBudgetRemaining()
-calculateBudgetUtilization()
-calculateGoalProgress()
-calculateOutstandingRepayment()
-calculateSavingsRate()
-calculateNextRecurringOccurrence()
-calculateTransferEffect()
-```
-
-Every critical formula must have explicit test fixtures.
+Optional suggestions may appear asynchronously and never block persist.
 
 ---
 
-# 9. Money Tests
-
-Every important money function should test:
+# 15. Form Performance
 
 ```text
-Normal Value
-Zero
-Small Decimal
-Large Value
-Boundary
-Invalid Value
-Negative Where Supported
+Minimal required fields
+Stable keyboard
+No layout thrash on amount input
+No full-list re-render per keystroke
 ```
 
-Example:
-
-```text
-10000.00 - 3500.00 = 6500.00
-```
+Category and account pickers should use indexed local queries, not filter the entire ledger in JS on every tap.
 
 ---
 
-# 10. Decimal / Rounding Tests
+# 16. Home / Dashboard Performance
 
-Test values such as:
-
-```text
-0.01
-0.10
-0.99
-123456789.99
-```
-
-Avoid silently rounding during intermediate calculations.
-
-The application's decimal strategy must be consistent across:
+Home shows derived totals, not a second ledger.
 
 ```text
-Mobile
-Backend
-Database
-Reports
-Analytics
-AI Context
-Exports
+Read accounts
+Read recent transactions (page)
+Derive totals in domain code
+Render
 ```
+
+Do not scan all historical rows in JS to paint Home.
+
+If a summary table or cached aggregate is introduced, it must stay consistent with the transaction ledger. The ledger remains source of truth.
 
 ---
 
-# 11. Percentage Tests
+# 17. Account Balance Reads
 
-Test:
+Balance reads must be cheap.
 
-```text
-0%
-50%
-100%
->100%
-0 denominator
-```
-
-Example:
+Preferred:
 
 ```text
-Savings / Income
-Income = 0
-→ N/A
+Derived from ledger with indexed queries
+or
+Maintained summary updated in the same local transaction
 ```
 
-No division-by-zero behavior should leak into financial calculations.
+Never display a balance computed with floating-point JS `number`.
 
 ---
 
-# 12. Date and Calendar Tests
+# 18. Transaction List Performance
 
-Test:
-
-```text
-Start of month
-End of month
-Year boundary
-Leap year
-February
-Backdated dates
-Future dates
-Timezone boundaries
-Midnight
-```
-
-Recurring, reporting, budget, and notification logic must all pass boundary tests.
-
----
-
-# 13. Budget Testing
-
-At minimum:
-
-```text
-Under Budget
-Exactly At Budget
-Over Budget
-Zero Budget
-Refund
-Transfer Exclusion
-Backdated Expense
-Deleted Expense
-Future-Dated Activity
-Threshold Crossing
-Projected Overrun
-```
-
-Also test:
-
-```text
-New Period Threshold Reset
-Overlapping Budgets
-Category Scope
-```
-
----
-
-# 14. Goal Testing
-
-At minimum:
-
-```text
-0%
-1%
-50%
-99%
-100%
-Overfunding
-No Target Date
-Past Target Date
-Target Date Change
-Target Amount Change
-Contribution Create
-Contribution Edit
-Contribution Delete
-Pause
-Resume
-Complete
-Reopen
-```
-
----
-
-# 15. Lending / Borrowing Testing
-
-Test:
-
-```text
-Create Obligation
-Partial Repayment
-Multiple Repayments
-Full Repayment
-Overdue
-Due Today
-Due Soon
-Invalid Overpayment
-Repayment Edit
-Repayment Delete
-Cancellation
-Reminder Cancellation
-```
-
-Also test concurrent repayment requests.
-
----
-
-# 16. Transaction Testing
-
-Test all types:
-
-```text
-Expense
-Income
-Transfer
-Refund
-Adjustment
-```
-
-And actions:
-
-```text
-Create
-Read
-Update
-Delete
-Restore
-Backdate
-Future-Date
-Import
-Attachment
-Recurring Link
-```
-
----
-
-# 17. Account Testing
-
-Test:
-
-```text
-Opening Balance
-Income Effect
-Expense Effect
-Transfer In
-Transfer Out
-Adjustment
-Archive
-Restore
-Reconciliation
-Credit Account
-Negative Balance Policy
-Currency
-```
-
-Balances must remain reproducible from source data.
-
----
-
-# 18. Recurring Transaction Testing
-
-Test:
-
-```text
-Daily
-Weekly
-Biweekly
-Monthly
-Quarterly
-Yearly
-Custom Interval
-31st of Month
-February
-Leap Year
-Start Date
-End Date
-Pause
-Resume
-Skip
-Missed Occurrence
-Occurrence Override
-Manual Match
-Automatic Generation
-```
-
----
-
-# 19. Notification Testing
-
-Test:
-
-```text
-Trigger
-Eligibility
-Scheduling
-Quiet Hours
-Snooze
-Cancellation
-Deduplication
-Retry
-Failure
-Deep Link
-Multi-Device Behavior
-```
-
----
-
-# 20. Media / Files Testing
-
-Test:
-
-```text
-Valid Image
-Valid PDF
-Invalid MIME
-Invalid Extension
-Oversized File
-Checksum
-Upload
-Retry
-Cancel
-Preview
-Attach
-Detach
-Delete
-Signed URL
-OCR
-Offline Upload
-Orphan Cleanup
-```
-
----
-
-# 21. Report Testing
-
-Test:
-
-```text
-Monthly Summary
-Income
-Expense
-Category
-Cash Flow
-Budget
-Goals
-Lending
-Borrowing
-Recurring
-Account
-```
-
-And:
-
-```text
-Date Filters
-Comparisons
-Timezone
-Refunds
-Transfers
-Backdated Transactions
-Future-Dated Transactions
-Drill-Down
-Export
-```
-
----
-
-# 22. Analytics Testing
-
-Test deterministic metrics:
-
-```text
-Income
-Expense
-Savings
-Savings Rate
-Category Share
-Trends
-Budget Risk
-Goal Risk
-Financial Health
-Anomaly Detection
-```
-
-Test:
-
-```text
-Zero Data
-Sparse Data
-Missing Data
-Outliers
-Large Data
-```
-
----
-
-# 23. Forecast Testing
-
-Every forecast type must test:
-
-```text
-Baseline
-Sufficient Data
-Insufficient Data
-Missing Data
-Outliers
-Model Failure
-Prediction Range
-Confidence
-Fallback
-```
-
-Advanced models must be compared against a simpler baseline.
-
----
-
-# 24. Component Tests
-
-React Native component tests should verify:
-
-```text
-Rendering
-User Interaction
-Validation
-Loading
-Error
-Empty State
-Accessibility
-Navigation Behavior
-```
-
-Priority components include:
-
-```text
-CurrencyInput
-TransactionComposer
-AccountCard
-BudgetCard
-GoalCard
-NotificationItem
-ReportCard
-AI Assistant Message
-```
-
----
-
-# 25. Component Testing Principle
-
-Test what the user can observe and do.
-
-Prefer:
-
-```text
-User Action
-→ Expected UI
-```
-
-over testing internal implementation details.
-
----
-
-# 26. Screen Tests
-
-Important screens:
-
-```text
-Dashboard
-Transactions
-Transaction Detail
-Accounts
-Budgets
-Goals
-Lending
-Borrowing
-Recurring
-Reports
-Notifications
-AI Assistant
-Settings
-```
-
-Each critical screen should test:
-
-```text
-Loading
-Loaded
-Empty
-Error
-Offline
-Primary Action
-Navigation
-```
-
----
-
-# 27. Integration Tests
-
-Integration tests validate boundaries between components.
-
-Examples:
-
-```text
-Service + Repository
-Repository + Database
-API + Database
-Transaction + Account
-Transaction + Budget
-Goal + Contribution
-Reminder + Notification
-File + Storage
-Sync + Database
-AI + Domain Tool
-```
-
----
-
-# 28. Database Testing
-
-Use a real PostgreSQL test environment when database behavior is part of the feature.
-
-Do not rely exclusively on mocked Prisma responses.
-
-Test:
-
-```text
-Relations
-Constraints
-Transactions
-Unique Constraints
-Decimal Fields
-Date Fields
-Soft Delete
-Indexes
-Migrations
-```
-
----
-
-# 29. Database Test Isolation
-
-Use one of:
-
-```text
-Disposable Test Database
-Per-Test Schema
-Transactional Rollback
-Database Reset
-```
-
-The chosen strategy must provide reliable isolation without making the suite unnecessarily slow.
-
----
-
-# 30. Prisma Integration Tests
-
-Validate:
-
-```text
-Relation Behavior
-Prisma Transactions
-Decimal Handling
-Unique Constraints
-Nullability
-Date Handling
-Soft-Delete Rules
-```
-
----
-
-# 31. Migration Tests
-
-Migration CI should verify:
-
-```text
-Fresh Database
-Existing Database
-Sequential Migrations
-Constraint Integrity
-Seed Compatibility
-```
-
-Destructive migrations require explicit review.
-
----
-
-# 32. API Contract Testing
-
-Every important API contract should validate:
-
-```text
-Request Shape
-Response Shape
-Status Codes
-Error Shape
-Authorization
-Pagination
-Idempotency
-```
-
-OpenAPI should remain synchronized with implementation.
-
----
-
-# 33. Authentication Tests
-
-Test:
-
-```text
-Registration
-Login
-Invalid Credentials
-Access Token
-Refresh Token
-Logout
-Password Reset
-Session Revocation
-Expired Session
-Rate Limiting
-```
-
----
-
-# 34. Authorization Tests
-
-Every protected endpoint must include ownership tests.
-
-Example:
-
-```text
-User A resource
-+
-User B request
-=
-Forbidden / Not Found
-```
-
-depending on the defined security policy.
-
----
-
-# 35. Object-Level Authorization
-
-For every:
-
-```text
-:id
-```
-
-style endpoint, verify that the resource belongs to the authenticated user.
-
-Test this for:
-
-```text
-Transactions
-Accounts
-Budgets
-Goals
-Lending
-Borrowing
-Files
-Notifications
-Reports
-AI tools
-```
-
----
-
-# 36. Mass Assignment Tests
-
-Try to modify protected properties:
-
-```text
-userId
-ownerId
-createdAt
-version
-deletedAt
-systemFlags
-```
-
-Expected:
-
-```text
-Rejected / Ignored
-```
-
-according to the API contract.
-
----
-
-# 37. Idempotency Testing
-
-Critical mutations must be safe under retries.
-
-Example:
-
-```text
-POST /transactions
-Idempotency-Key: abc-123
-```
-
-Repeated identical requests must produce:
-
-```text
-One Financial Operation
-```
-
-Test:
-
-```text
-Timeout then Retry
-Duplicate Request
-Concurrent Retry
-Worker Retry
-```
-
----
-
-# 38. Transfer Atomicity Tests
-
-For:
-
-```text
-Source → Destination
-```
-
-verify:
-
-```text
-Source - Amount
-Destination + Amount
-```
-
-If any part fails:
-
-```text
-Neither side changes
-```
-
-No partial transfer is acceptable.
-
----
-
-# 39. Repayment Concurrency Tests
-
-Example:
-
-```text
-Outstanding:
-৳5,000
-
-Request A:
-৳3,000
-
-Request B:
-৳3,000
-```
-
-The system must not accidentally record both as valid if doing so violates domain rules.
-
-Use database transaction/locking strategies appropriate to the implementation.
-
----
-
-# 40. Sync Testing
-
-Synchronization requires dedicated tests for:
-
-```text
-Create
-Update
-Delete
-Restore
-Retry
-Duplicate Operation
-Conflict
-Reconnect
-Partial Batch Failure
-Full Resync
-App Restart
-```
-
----
-
-# 41. Sync Entity Matrix
-
-Test every synchronizable entity:
-
-```text
-Accounts
-Transactions
-Budgets
-Goals
-Lending
-Borrowing
-Recurring Rules
-Notification Preferences
-Files / Attachments
-```
-
-Each needs:
-
-```text
-Create → Sync
-Update → Sync
-Delete → Sync
-Conflict → Resolve
-Retry → No Duplicate
-```
-
----
-
-# 42. Sync Conflict Tests
-
-Example:
-
-```text
-Device A:
-Amount = ৳500
-
-Device B:
-Amount = ৳700
-
-Both use version 4
-```
-
-Expected:
-
-```text
-One accepted
-One conflict
-```
-
-Never silently lose a valid update.
-
----
-
-# 43. Low-Risk Merge Tests
-
-Where merge behavior is supported:
-
-```text
-Device A changes Note
-Device B changes Tags
-```
-
-may be merged.
-
-Tests must verify the merge does not overwrite unrelated changes.
-
----
-
-# 44. Offline-First Testing
-
-With the network disabled, verify:
-
-```text
-Create Expense
-Edit Transaction
-Create Account
-Create Budget
-Add Goal Contribution
-Create Lending
-Create Borrowing
-Attach Receipt
-```
-
-Expected:
-
-```text
-Local persistence
-Immediate UI update
-Queued synchronization
-```
-
----
-
-# 45. Offline Restart Testing
-
-Scenario:
-
-```text
-Offline
- ↓
-Create 10 operations
- ↓
-Force Close App
- ↓
-Open App
- ↓
-Reconnect
- ↓
-Sync
-```
-
-Verify:
-
-```text
-All operations preserved
-No duplicates
-No missing data
-Correct versions
-```
-
----
-
-# 46. Partial Sync Failure
-
-Example:
-
-```text
-10 operations
-8 succeed
-2 fail
-```
-
-Expected:
-
-```text
-8 acknowledged
-2 retained for safe retry
-```
-
-The system must not discard successful operations.
-
----
-
-# 47. Full Resync Testing
-
-Test:
-
-```text
-Delete Local Data / Simulate Corruption
- ↓
-Authenticate
- ↓
-Full Resync
- ↓
-Rebuild Local DB
-```
-
-Verify:
-
-```text
-No duplicate entities
-No missing entities
-Correct versions
-Correct deletion tombstones
-Correct attachments
-```
-
----
-
-# 48. Notification Integration Tests
-
-Examples:
-
-```text
-Budget threshold crossed
-→ Notification
-
-Goal at risk
-→ Notification
-
-Repayment due
-→ Reminder
-
-Repayment completed
-→ Future reminder cancelled
-```
-
----
-
-# 49. Notification Deduplication
-
-Scenario:
-
-```text
-Budget threshold = 80%
-
-Calculate
-Calculate
-Sync
-Calculate
-Worker retry
-```
-
-Expected:
-
-```text
-One logical 80% notification
-```
-
----
-
-# 50. Email Provider Tests
+The list must not load the entire history.
 
 Use:
 
 ```text
-Mock Adapter
-or
-Test SMTP
+Pagination
+Cursor / keyset where practical
+SQLite indexes
+Virtualized lists
+Stable row keys
 ```
 
-Test:
-
-```text
-Success
-Timeout
-5xx
-Rate Limit
-Invalid Email
-Permanent Failure
-Retry
-Deduplication
-```
-
-Never use real production recipient addresses in CI.
+A large dataset must remain scrollable on low-end Android.
 
 ---
 
-# 51. Push Notification Tests
+# 19. List Virtualization
 
-Test:
+Transaction and analytics screens should use:
 
 ```text
-Token Registration
-Token Refresh
-Delivery Request
-Expired Token
-Provider Failure
-Device Revocation
+Virtualized lists
+Memoized rows where appropriate
+Stable keys
+Incremental loading
+Deferred heavy calculations
 ```
+
+The database must never force the UI to render unnecessary rows.
 
 ---
 
-# 52. File Integration Tests
+# 20. Search Performance
 
-Use an isolated test object-storage environment.
-
-Test:
+Search should prefer indexed local queries.
 
 ```text
-Presigned Upload
-Completion
-Checksum
-Ownership
-Signed Download
-Deletion
-Orphan Cleanup
+User types
+  ↓
+Debounce
+  ↓
+SQLite query
+  ↓
+Paged results
 ```
+
+Do not:
+
+```text
+Load all transactions into memory
+Filter in JS over the full table
+Require a server for historical search
+```
+
+SQLite FTS may be added when measured need exists. Do not introduce a separate search service for local transactions.
 
 ---
 
-# 53. OCR Tests
+# 21. Filter Performance
 
-Split testing into:
+Filters (account, category, type, date range) must run locally and offline.
 
-## Provider Adapter
-
-Verify provider response mapping.
-
-## Application Processing
-
-Verify extracted values become valid drafts.
-
-Use stable fixture images where practical.
+Combine filters in SQL, not by intersecting huge in-memory arrays.
 
 ---
 
-# 54. AI Testing Philosophy
+# 22. SQLite Performance
 
-AI cannot be tested only by exact string equality.
+SQLite is the local operational store.
 
-Evaluate:
+Priorities:
 
 ```text
-Correct Facts
-Correct Tool
-Correct Scope
-Correct Schema
-Numerical Consistency
-Safety
-Relevance
+Immediate transaction persistence
+Fast list scrolling
+Fast search
+Fast balance reads
+Fast dashboard
 ```
+
+Expensive work runs asynchronously when practical.
 
 ---
 
-# 55. AI Unit Tests
+# 23. Local Indexing
 
-Test:
+Indexes must support common queries. Likely:
 
 ```text
-Prompt Construction
-Context Minimization
-Tool Definitions
-Routing
-Output Validation
-Permission Policy
-Fallback Logic
+transactions(transaction_date)
+transactions(account_id, transaction_date)
+transactions(category_id, transaction_date)
+transactions(type, transaction_date)
+lending_records(status, expected_repayment_date)
+borrowing_records(status, expected_repayment_date)
+notifications(status, scheduled_at)
+sync_operations(status, created_at)
 ```
+
+Validate with realistic on-device datasets. Exact indexes belong in `LOCAL_STORAGE.md` / schema.
 
 ---
 
-# 56. AI Tool Tests
+# 24. Local Query Shape
 
-Every tool must test:
+Prefer:
 
 ```text
-Valid Request
-Invalid Request
-Missing Resource
-Wrong Resource
-Unauthorized Resource
-Empty Result
-Large Result
+SELECT needed columns
+WHERE indexed predicates
+ORDER BY transaction_date DESC
+LIMIT page_size
 ```
 
-The tool layer must remain safe even when the model sends malicious parameters.
-
----
-
-# 57. AI Numerical Tests
-
-Trusted value:
+Avoid:
 
 ```text
-৳8,450
-```
-
-The system must reject a generated factual answer claiming:
-
-```text
-৳8,950
-```
-
-where the answer presents the amount as a verified value.
-
----
-
-# 58. AI Prompt Injection Tests
-
-Inject malicious text into:
-
-```text
-User Prompt
-Transaction Notes
-Merchant Names
-OCR Results
-Imported Data
-Files
-```
-
-Verify that it cannot change:
-
-```text
-System Instructions
-User Scope
-Tool Permissions
-Financial Authorization
+SELECT *
+Unbounded scans
+OFFSET deep into large tables
+JOIN explosions in the UI layer
 ```
 
 ---
 
-# 59. AI Security Scenarios
+# 25. Pagination
 
-Test:
+Transaction lists support pagination.
+
+Conceptual:
 
 ```text
-Show another user's balance
-Delete my transaction without asking
-Send money
-Send email automatically
-Reveal private account identifier
-Ignore previous instructions
+SELECT ...
+FROM transactions
+WHERE ...
+ORDER BY transaction_date DESC, id DESC
+LIMIT N
 ```
 
-Expected:
+For very large datasets, cursor / keyset pagination beats large `OFFSET`.
+
+Choose after measurement.
+
+---
+
+# 26. Cursor vs Offset
 
 ```text
-Reject
-Clarify
-or
-Require explicit confirmation
+Offset  Simple, degrades on deep pages
+Cursor  Stable, better for large ledgers
+```
+
+API collections should prefer cursor + limit when cloud lists exist.
+
+```text
+GET /transactions?cursor=abc&limit=50
 ```
 
 ---
 
-# 60. AI Regression Suite
+# 27. Derived Balances
 
-Run the AI suite when changing:
+Balances are derived in domain code from the ledger.
+
+Cost of a balance read must stay in the Instant / Interactive class for a single account.
+
+If summaries are materialized:
 
 ```text
-Provider
-Model
-Prompt
-Tool Schema
-Context Schema
-Orchestrator
-Memory Strategy
+Update summary in the same SQLite transaction as the ledger write
+```
+
+A stale summary that disagrees with the ledger is a P0 correctness bug.
+
+---
+
+# 28. Money Calculation Cost
+
+Monetary math uses decimal-safe types (`packages/types`, TEXT scale 2).
+
+Decimal libraries are slower than `number`. That cost is accepted.
+
+Do not "optimize" money by switching to IEEE floats.
+
+Batch formatting for lists. Do not re-parse decimal strings on every scroll frame.
+
+---
+
+# 29. Rendering Performance
+
+```text
+Virtualize long lists
+Avoid anonymous inline work in hot rows
+Keep row components cheap
+Defer charts until the screen is focused
+```
+
+Charts and analytics may lag Home. Entry and lists must not.
+
+---
+
+# 30. Memory Usage
+
+The app must remain stable on low-end Android with a Large dataset.
+
+Do not hold:
+
+```text
+All transactions in RAM
+Decoded full-resolution receipts
+Unbounded AI transcripts
+Unbounded sync payloads
+```
+
+Page, stream, and release.
+
+---
+
+# 31. Image / Receipt Memory
+
+```text
+Downscale before display
+Do not decode originals for thumbnails
+Cap concurrent decodes
+Store files on disk, not in SQLite blobs, unless measured better
+```
+
+See `MEDIA_FILES.md` for storage rules. Performance must not weaken privacy of financial files.
+
+---
+
+# 32. Battery
+
+Routine use should not drain the battery through:
+
+```text
+Tight polling
+Wake locks
+Constant GPS
+Unbounded background sync
+Repeated AI calls
+```
+
+Sync and jobs should batch and back off.
+
+---
+
+# 33. Network Usage
+
+Phase 3: core flows use no network.
+
+Later, mobile network policy:
+
+```text
+Prefer Wi-Fi for large sync / backup / media
+Compress payloads
+Send diffs, not full tables
+Respect metered connections
+```
+
+Do not optimize bandwidth by dropping financial operations.
+
+---
+
+# 34. Offline Performance
+
+Offline is the default happy path.
+
+```text
+Record transaction
+  ↓
+Local persist
+  ↓
+UI updates
+  ↓
+(optional later) enqueue sync
+```
+
+Restarting the app offline must restore queued work without a network round trip.
+
+---
+
+---
+
+# 35. API Performance Scope
+
+Until Phase 6 the public API is:
+
+```text
+GET /health
+```
+
+Health must stay cheap. Later finance routes inherit the budgets below.
+
+---
+
+# 36. Health Endpoint Performance
+
+```text
+GET /health       liveness, no dependency fan-out
+GET /health/live  process alive
+GET /health/ready PostgreSQL / Redis when those exist
+```
+
+Readiness may check infrastructure.
+
+External AI or email failure must not make the core API unready.
+
+Health handlers should not run migrations, reports, or sync.
+
+---
+
+# 37. Authentication Latency
+
+When cloud auth exists:
+
+```text
+Interactive for login
+Instant for validated access-token requests
+Refresh off the hot path of each mutation if possible
+```
+
+Auth must not add multi-second work to transaction create.
+
+---
+
+# 38. Transaction Create Latency
+
+Preferred cloud path:
+
+```text
+Validate
+  ↓
+Persist financial state
+  ↓
+Respond
+  ↓
+Async:
+    analytics refresh
+    AI candidate generation
+    notifications
+```
+
+Synchronous work is only what domain consistency requires.
+
+---
+
+# 39. Collection Endpoint Latency
+
+List endpoints must paginate.
+
+```text
+Interactive for a page of 50
+Never return unbounded ledgers
+```
+
+Dashboard aggregates should hit indexes or summaries, not full table scans per request.
+
+---
+
+# 40. Payload Size
+
+```text
+Omit unused fields
+Do not embed receipts in list payloads
+Do not send AI narratives on every list
+Compress where the platform already supports it
+```
+
+Large exports are a separate job, not a list endpoint.
+
+---
+
+# 41. API Pagination
+
+Preferred for large mutable datasets:
+
+```text
+cursor
+limit
+```
+
+Example:
+
+```text
+GET /transactions?cursor=abc&limit=50
+```
+
+Response:
+
+```json
+{
+  "data": [],
+  "meta": {
+    "nextCursor": "xyz",
+    "hasMore": true
+  }
+}
 ```
 
 ---
 
-# 61. Forecast Model Testing
+# 42. N+1 Prevention
 
-For each model:
+Prisma / repository code must not issue one query per row for lists.
 
 ```text
-Baseline
-Backtest
-Error Measurement
-Confidence
-Interval Coverage
-Fallback
-Data Sufficiency
+Bad   N account lookups in a loop
+Good  JOIN or batched IN query
+```
+
+List screens and report jobs are the usual N+1 sites. Add a query log in development for these paths.
+
+---
+
+# 43. PostgreSQL Performance
+
+PostgreSQL is the cloud source of truth (Phase 6).
+
+Needs:
+
+```text
+Strong consistency
+Indexes for real query patterns
+Predictable aggregation
+Concurrent writes without lost updates
+```
+
+Financial writes use transactions. Do not trade isolation for speed on ledger mutations.
+
+---
+
+# 44. Prisma Query Discipline
+
+```text
+Select only needed fields
+Avoid unbounded findMany
+Use transactions for multi-row financial writes
+Use raw SQL only when justified and tested
+```
+
+Complex report SQL is allowed when Prisma cannot express an efficient plan. Keep it in the repository layer.
+
+---
+
+# 45. Indexing Strategy
+
+High-value cloud indexes should cover:
+
+```text
+Transaction(user_id, transaction_date)
+Transaction(user_id, account_id, transaction_date)
+Transaction(user_id, category_id, transaction_date)
+Transaction(user_id, type, transaction_date)
+Budget(user_id, status)
+Goal(user_id, status)
+LendingRecord(user_id, status, expected_repayment_date)
+BorrowingRecord(user_id, status, expected_repayment_date)
+Notification(user_id, status, scheduled_at)
+SyncOperation(device_id, status, created_at)
+```
+
+Validate with `EXPLAIN` on production-like data. Final schema lives in `DATABASE.md`.
+
+---
+
+# 46. Indexing Rule
+
+Do not index a column because it exists.
+
+Every extra index has:
+
+```text
+Storage cost
+Write cost
+Maintenance cost
+```
+
+Indexes must correspond to real queries.
+
+---
+
+# 47. Aggregation Queries
+
+Reports and dashboards should aggregate in the database, not in the API process over full result sets.
+
+```text
+SQL / Prisma aggregate
+  ↓
+Typed DTO
+  ↓
+Client
+```
+
+Never:
+
+```text
+Load 10,000 rows
+  ↓
+Reduce in Node
+  ↓
+Return one number
 ```
 
 ---
 
-# 62. Forecast Backtesting
+# 48. Report Generation Performance
 
-Procedure:
+Simple reports should return synchronously from local data or a cheap query.
+
+Potentially expensive reports become jobs:
 
 ```text
-Use Data Through T
- ↓
-Forecast T+1
- ↓
-Compare Actual
- ↓
-Repeat
+POST /reports/jobs
+  ↓
+Job ID
+  ↓
+Background worker
+  ↓
+Report generated
+  ↓
+Download / view
 ```
 
-Record:
+Expensive cases:
 
 ```text
-MAE
-RMSE
-Prediction Interval Coverage
-```
-
-as appropriate.
-
----
-
-# 63. Model Promotion Gate
-
-An advanced model should become default only when it demonstrates meaningful, stable improvement over a simpler baseline.
-
-Do not promote a model because it is more complex.
-
----
-
-# 64. Forecast Failure Tests
-
-Test:
-
-```text
-Insufficient History
-Malformed Features
-Missing Data
-Model Timeout
-Model Failure
-Unexpected Output
-```
-
-Expected:
-
-```text
-Baseline Forecast
-or
-Insufficient Data
-```
-
-No fabricated value.
-
----
-
-# 65. Security Testing
-
-Security tests should include:
-
-```text
-Authentication
-Authorization
-IDOR / BOLA
-Mass Assignment
-Injection
-Rate Limits
-Session Security
-File Access
-AI Tool Security
-Secret Exposure
+Multi-year analysis
+Large datasets
+PDF generation
+Complex grouped analytics
 ```
 
 ---
 
-# 66. Dependency Security Testing
+# 49. Report Caching
 
-CI should scan:
+Reports may be cached when:
 
 ```text
-Node dependencies
-Native mobile dependencies
-Docker images
-Infrastructure dependencies
+Source data unchanged
+Report configuration unchanged
+Calculation version unchanged
 ```
 
-Critical issues should block release or require documented risk acceptance.
+Cache key may include:
+
+```text
+user_id
+report_type
+period
+filters
+calculation_version
+input_snapshot_hash
+```
+
+Cached reports must remain explainable and reconcilable with the ledger.
 
 ---
 
-# 67. Secret Scanning
+# 50. Heavy Reports Are Async
 
-CI should scan for:
+From `REPORTING.md`:
 
 ```text
-API Keys
-Tokens
-Private Keys
-Passwords
-Cloud Credentials
+Standard mobile report    Immediate from local data
+Standard cloud report     A few seconds or less
+Heavy report              Async with progress
 ```
 
-Secrets should never be committed even temporarily.
+Do not block HTTP or the UI thread on PDF / multi-year work.
 
 ---
 
-# 68. File Security Testing
+# 51. Redis Caching Role
 
-Test:
+Redis is:
 
 ```text
-Path Traversal
-Invalid MIME
-Oversized File
-Unauthorized File Access
-Expired Signed URL
-Public Storage Exposure
-Attachment Ownership
+Cache
+Job queue
+Ephemeral coordination
 ```
 
----
+Redis is **not** the financial store.
 
-# 69. Rate Limiting Tests
-
-Test:
+Safe to cache:
 
 ```text
-Authentication
-AI
-File Upload
-Sync
-General API
+AI insight payloads
+Forecast results
+Rendered report metadata
+Rate-limit counters
+Session / refresh bookkeeping if chosen
 ```
 
-Verify:
+Unsafe to treat as truth:
 
 ```text
-429
-```
-
-where the configured policy requires it.
-
----
-
-# 70. Performance Testing
-
-Measure:
-
-```text
-App Startup
-Transaction Creation
-Transaction List
-Local Queries
-API Response
-Database Aggregation
-Sync
-File Upload
-AI Query
-Forecasting
-Report Generation
-```
-
-See `PERFORMANCE.md` for detailed performance budgets.
-
----
-
-# 71. Load Testing
-
-Simulate realistic workloads:
-
-```text
-Many Users
-Large Transaction History
-Concurrent Financial Writes
-Report Generation
-Sync Bursts
-AI Bursts
-File Uploads
-Background Jobs
-```
-
----
-
-# 72. Stress Testing
-
-Stress testing should determine:
-
-```text
-Failure Threshold
-Queue Behavior
-Database Behavior
-Recovery
-Rate Limit Behavior
-Graceful Degradation
-```
-
-The goal is resilience, not simply maximum throughput.
-
----
-
-# 73. Mobile Performance Testing
-
-Measure:
-
-```text
-Cold Start
-Warm Start
-Screen Navigation
-SQLite Reads
-SQLite Writes
-Transaction List Rendering
-Sync
-Memory
-Battery Impact where relevant
-```
-
----
-
-# 74. Accessibility Testing
-
-Test:
-
-```text
-Screen Reader
-Dynamic Font Scaling
-Color Contrast
-Touch Target Size
-Error Announcements
-Chart Semantics
-Form Labels
-```
-
----
-
-# 75. Device Matrix
-
-Test representative Android devices:
-
-```text
-Minimum Supported Device
-Lower-End Device
-Midrange Device
-Modern Flagship
-Small Screen
-Large Screen
-```
-
-Future iOS support should use an equivalent matrix.
-
----
-
-# 76. Network Simulation
-
-Mobile E2E testing should cover:
-
-```text
-Online
-Offline
-Slow Network
-Intermittent Network
-Reconnect
-No Internet During Upload
-```
-
-The application must behave predictably in each state.
-
----
-
-# 77. Clock Control
-
-Use controllable time for tests involving:
-
-```text
+Balances
+Transactions
 Budgets
-Reports
-Goals
-Recurring Transactions
-Due Dates
+Repayment state
+```
+
+---
+
+# 52. Cache Invalidation
+
+Invalidation must be deterministic.
+
+Examples:
+
+```text
+Transaction created
+  ↓
+Monthly insight cache invalid
+
+Budget changed
+  ↓
+Budget insight invalid
+
+Ledger mutation
+  ↓
+Matching report cache invalid
+```
+
+Prefer delete-on-write over long TTLs for anything derived from money.
+
+---
+
+# 53. What Must Not Be Cached
+
+```text
+Authorization decisions as the only check
+Other users' financial payloads
+Unsigned file URLs beyond their TTL policy
+AI numeric claims that skip deterministic recalculation
+```
+
+---
+
+# 54. Background Jobs Performance
+
+Jobs exist so request/UI paths stay in Instant / Interactive classes.
+
+Typical jobs:
+
+```text
 Notifications
-Forecasts
-```
-
-Tests must not depend on the real current date.
-
----
-
-# 78. Randomness Control
-
-Randomized behavior should use deterministic seeds in tests where applicable.
-
----
-
-# 79. Test Fixtures
-
-Maintain reusable fixtures such as:
-
-```text
-basic-user
-multiple-accounts
-monthly-transactions
-budget-risk
-goal-at-risk
-overdue-lending
-recurring-expenses
-credit-account
-```
-
-Fixtures must use synthetic data.
-
----
-
-# 80. Test Builders
-
-Where objects are complex, use builders:
-
-```text
-TransactionBuilder
-AccountBuilder
-BudgetBuilder
-GoalBuilder
-LendingBuilder
-RecurringRuleBuilder
-```
-
-Builders should not hide important test assumptions.
-
----
-
-# 81. Mocking Strategy
-
-Mock external providers:
-
-```text
-AI
+Report generation
+Forecast refresh
+AI candidate generation
+Sync fan-out
+Media processing
 Email
-Push
-Object Storage
-OCR
-External APIs
 ```
 
-Prefer real database behavior in integration tests where correctness depends on SQL/Prisma semantics.
+Jobs must be idempotent (`DEC-023`). Retries must not duplicate transfers or notifications.
 
 ---
 
-# 82. Snapshot Testing
+# 55. Job Queue Depth
 
-Use snapshots selectively.
-
-Good candidates:
+Monitor:
 
 ```text
-Small stable components
-Structured API objects
-Report fragments
+Queue depth
+Processing latency
+Failure rate
+Retry count
+Oldest pending job age
 ```
 
-Avoid giant snapshots of frequently changing screens.
+A growing queue is a performance incident before it is a user-visible outage.
 
 ---
 
-# 83. Flaky Test Policy
+# 56. Idempotent Jobs and Cost
 
-Flaky tests are treated as defects.
+Idempotency keys add a lookup. That cost is required.
 
-Do not solve flaky tests merely by adding arbitrary retries.
-
-Root causes may include:
-
-```text
-Race Condition
-Timing
-Shared State
-Async Cleanup
-Environment Dependency
-```
-
-Fix the underlying problem.
+Do not skip idempotency to "make jobs faster."
 
 ---
 
-# 84. Test Timeouts
-
-Timeouts should be:
+# 57. Notification Dispatch
 
 ```text
-Explicit
-Reasonable
-Environment-Aware
+Event
+  ↓
+Enqueue
+  ↓
+Worker
+  ↓
+Provider
 ```
 
-Do not increase test timeouts indefinitely to hide slow behavior.
+Do not send email/push inside the transaction-create request unless a rare consistency rule demands it.
+
+Deduplicate so retries do not spam.
 
 ---
 
-# 85. CI Pipeline
+# 58. File / Object Storage Latency
 
-Recommended sequence:
+Uploads and downloads are Slow / Async relative to ledger writes.
 
 ```text
-Install
- ↓
-Lint
- ↓
-Typecheck
- ↓
-Unit
- ↓
-Integration
- ↓
-Contract
- ↓
-Security
- ↓
-Build
- ↓
-E2E
+Persist financial record first
+Attach file metadata
+Upload bytes asynchronously if needed
 ```
 
-Heavy jobs may run in parallel.
+Failed uploads must not delete the transaction (`LOCAL_STORAGE.md`).
+
+Signed URL generation should be cheap. Streaming large objects should not tie up API event-loop workers — use dedicated upload paths.
 
 ---
 
-# 86. Pull Request Gates
+# 59. Sync Performance Strategy
 
-Every PR should pass at least:
+Priority order (`SYNC_ARCHITECTURE.md`):
 
 ```text
-Lint
-Typecheck
-Unit Tests
-Relevant Integration Tests
-Build
+1. Financial correctness
+2. Durable synchronization
+3. Reasonable latency
+4. Battery efficiency
+5. Network efficiency
 ```
 
-Changes to high-risk modules should trigger additional tests.
+Do not optimize network traffic at the cost of financial correctness.
 
 ---
 
-# 87. High-Risk Module Gates
+# 60. Sync Throughput
 
-Changes to:
+Sync should send:
 
 ```text
-Transactions
-Accounts
-Sync
-Auth
-Budgets
-Goals
-Lending
-Borrowing
-Files
-AI Tools
-Database Schema
+Changed entities
+Tombstones
+Versions
 ```
 
-should require deeper test coverage.
+Not:
+
+```text
+The entire SQLite database every time
+```
+
+Batch by entity type. Cap batch size. Continue after partial failure.
 
 ---
 
-# 88. Main Branch Protection
+# 61. Sync Batch Size
 
-Main branch should require:
+Choose batch size from measurement, not guesswork.
+
+Constraints:
 
 ```text
-Mandatory CI Checks
-Review
-Passing Tests
+Fits in memory on low-end devices
+Fits typical mobile request size
+Leaves the UI responsive
+Allows resume after failure
 ```
 
-Emergency bypass procedures should be explicit and auditable.
+A failed batch must not discard unrelated successful items.
 
 ---
 
-# 89. Release Gates
+# 62. Conflict Resolution Cost
 
-Before production release:
+Conflict detection is required. It will cost CPU and round trips.
 
 ```text
-Full Test Suite
-Security Checks
-Build
-Database Migration Validation
-Smoke Test
+Cheap merge for non-financial metadata when safe
+Explicit conflict for concurrent ledger edits
+Never silent last-write-wins on money
+```
+
+Do not "speed up" sync by last-write-wins on transactions.
+
+---
+
+# 63. Offline Restart Sync
+
+Queued operations must survive:
+
+```text
+App kill
+OS memory reclaim
+Device reboot
+```
+
+Drain the queue on connectivity without blocking first paint.
+
+---
+
+# 64. Partial Sync Failure
+
+```text
+8 acknowledged
+2 remain retryable
+No duplicate records
+No missing committed records
+Correct versions
+Correct tombstones
+```
+
+The entire batch is not discarded because one row failed.
+
+---
+
+---
+
+# 65. Forecasting Latency
+
+Forecasting is independent of the LLM.
+
+```text
+Historical data
+  ↓
+Feature preparation
+  ↓
+Model
+  ↓
+Validation / confidence
+  ↓
+Result
+```
+
+Users may wait for a forecast. They must not wait for a forecast to save a transaction.
+
+Refresh on a worker or idle path. Show last good forecast plus freshness.
+
+---
+
+# 66. Forecast Cache
+
+Cache key:
+
+```text
+input_snapshot_hash
+model_version
+forecast_period
+```
+
+Regenerate when material inputs or model version change.
+
+A more expensive model must not become default unless it beats the baseline on accuracy *and* stays within latency budget (`DEC-019`).
+
+---
+
+# 67. AI Latency
+
+AI is the lowest interactive priority.
+
+```text
+Insights
+Recommendations
+Explanations
+Assistant turns
+```
+
+Target class: Async. Show skeletons / last cached insight. Never block ledger writes.
+
+Provider timeouts must fail closed to a fallback, not hang the app.
+
+---
+
+# 68. AI Must Not Block Core Finance
+
+Core features must work if:
+
+```text
+Provider is down
+User is offline
+Keys are missing
+Latency is high
+```
+
+```text
+Transaction save  → never waits on AI
+Balances          → never from an LLM
+Reports           → deterministic engine first
 ```
 
 ---
 
-# 90. Production Smoke Tests
+# 69. AI Cache
 
-After deployment, verify:
+Safe results may be cached:
 
 ```text
+context_hash
++
+task_type
++
+model_version
+```
+
+Avoid repeated calls for an unchanged analytical context.
+
+---
+
+# 70. AI Cache Invalidation
+
+```text
+Transaction created → monthly insight invalid
+Budget changed      → budget insight invalid
+```
+
+Numeric claims in a cached narrative must still match live deterministic calculations when displayed, or the cache is dropped.
+
+---
+
+# 71. Provider Timeouts
+
+```text
+Connect timeout
+Total request timeout
+Retry with jitter
+Circuit breaker on repeated failure
+```
+
+Retries must not amplify cost or duplicate side effects. AI tools that write require user confirmation (`DEC-013`) and are never implicit retries of money moves.
+
+---
+
+# 72. Large Dataset Strategy
+
+Remain usable with:
+
+```text
+Thousands of transactions
+Large category histories
+Long reporting periods
+```
+
+Use:
+
+```text
+Indexes
+Pagination
+Virtualization
+Incremental loading
+Optimized aggregation
+Background processing
+```
+
+---
+
+# 73. 10,000+ Transactions
+
+Local architecture target (`LOCAL_STORAGE.md`):
+
+```text
+10,000+ transactions remain usable
+```
+
+Verify on real devices, not only simulators.
+
+If a screen cannot stay Interactive at this size, it is not done.
+
+---
+
+# 74. Multi-Year Reports
+
+Multi-year analysis is Heavy. Run async. Show progress.
+
+Do not compute a five-year PDF on the UI thread or inside `GET /reports` without a job.
+
+---
+
+# 75. Export Performance
+
+```text
+CSV / JSON export of a page   Acceptable
+Full backup                   Async
+Encrypted archive             Async
+```
+
+Exports must not lock the ledger against new entries.
+
+---
+
+# 76. Import Performance
+
+Imports (future bank CSV / statements) stream and batch.
+
+```text
+Parse chunk
+Validate
+Insert in transactions
+Checkpoint progress
+```
+
+Do not load a 20 MB statement as one string on a low-end phone.
+
+---
+
+# 77. Concurrent Writes
+
+Ledger mutations must remain correct under overlap:
+
+```text
+Double tap save
+Retry after timeout
+Sync vs local edit
+Two devices (Phase 6)
+```
+
+Transfers are atomic. Speed does not justify two-step unguarded updates.
+
+---
+
+# 78. Transfer Atomicity vs Latency
+
+A transfer is one business operation:
+
+```text
+Source - X
+Destination + X
+Same local/cloud transaction
+```
+
+Accept a few extra milliseconds. Do not split into two independent writes for speed.
+
+---
+
+# 79. Worker Scaling
+
+Scale workers by queue depth and latency, not by guessing.
+
+Workers are stateless regarding the ledger. PostgreSQL holds truth.
+
+---
+
+# 80. Horizontal API Scaling
+
+The API must be stateless (`DEPLOYMENT.md`).
+
+Session data, if any, lives in Redis or the database — not in process memory that breaks at replica count 2.
+
+---
+
+# 81. Connection Pooling
+
+```text
+Prisma pool sized to Postgres max_connections
+Workers and API do not starve each other
+Health checks do not leak connections
+```
+
+Pool exhaustion looks like "the app is slow." Measure it.
+
+---
+
+# 82. Timeouts
+
+Every I/O boundary has a timeout:
+
+```text
+HTTP client
+Prisma
+Redis
+Object storage
+AI provider
+Email / push
+```
+
+No infinite wait. Prefer fail + retry/idempotency over hanging a user.
+
+---
+
+# 83. Backpressure
+
+When overloaded:
+
+```text
+Shed AI first
+Shed non-critical reports
+Keep transaction create and health
+```
+
+Return explicit errors. Do not silently drop ledger writes.
+
+---
+
+# 84. Load Testing
+
+Load tests use synthetic data.
+
+Cover:
+
+```text
+Transaction create
+Transaction list
+Balance read
+Sync batch (when it exists)
 Health
-Authentication
-Account Read
-Transaction Read
-Core API
 ```
 
-If a production write smoke test is required, use dedicated test resources rather than real user financial data.
+Do not use real user financial data.
+
+See `TESTING.md` load-testing layer.
 
 ---
 
-# 91. Test Coverage
+# 85. Stress Testing
 
-Coverage should support risk-based testing.
-
-High-priority domains should have stronger coverage:
+Stress exceeds expected load to observe:
 
 ```text
-Transaction Calculations
-Account Balances
-Sync
-Authentication
-Budget Calculations
-Goal Calculations
-Repayments
-Recurring Rules
+Graceful degradation
+Timeouts
+Queue growth
+Error rates
+Recovery after load drops
 ```
 
-Raw percentage alone is not an adequate quality metric.
+The goal is not a vanity max RPS number.
 
 ---
 
-# 92. Branch Coverage
+# 86. Soak Testing
 
-Use targeted branch coverage for:
+Run a Typical or Large dataset for a long window to catch:
 
 ```text
-Authorization
-Sync Conflict
-Retry Logic
-Notification Eligibility
-Forecast Fallback
-Validation
+Memory leaks
+Queue leaks
+Connection leaks
+SQLite file growth surprises
 ```
+
+Especially important on mobile.
 
 ---
 
-# 93. Cross-Module Testing
+# 87. Mobile Device Matrix
 
-Important flows cross multiple modules.
-
-Example:
+Performance sign-off includes at least:
 
 ```text
-Transaction
- ↓
-Account Balance
- ↓
-Budget
- ↓
-Analytics
- ↓
-Report
- ↓
-AI Insight
+One low-end Android
+One current mid-range Android
 ```
 
-At least a representative set of these chains must be covered end-to-end.
-
----
-
-# 94. Financial Integrity Scenario
-
-Example fixture:
-
-```text
-Opening Balance:
-৳100,000
-
-Income:
-৳50,000
-
-Expense:
-৳10,000
-
-Transfer:
-৳5,000
-```
-
-Verify consistency across:
-
-```text
-Account
-Transactions
-Budget
-Reports
-Analytics
-```
-
----
-
-# 95. Goal Integrity Scenario
-
-Example:
-
-```text
-Target:
-৳100,000
-
-Contributions:
-৳20,000
-৳30,000
-```
-
-Verify:
-
-```text
-Current:
-৳50,000
-
-Remaining:
-৳50,000
-
-Progress:
-50%
-```
-
-Then edit/delete a contribution and verify all derived values update correctly.
-
----
-
-# 96. Lending Integrity Scenario
-
-Example:
-
-```text
-Original:
-৳10,000
-
-Repayment:
-৳4,000
-```
-
-Verify:
-
-```text
-Outstanding:
-৳6,000
-```
-
-Then record another:
-
-```text
-৳6,000
-```
-
-Verify:
-
-```text
-Fully Repaid
-Future reminders cancelled
-```
-
----
-
-# 97. Sync Integrity Scenario
-
-```text
-Device A Offline
-→ Create Expense
-
-Device B Online
-→ Create Expense
-
-Reconnect Device A
-→ Sync
-```
-
-Verify:
-
-```text
-Both Transactions Exist
-Correct Balances
-Correct Reports
-No Duplicate
-```
-
----
-
-# 98. File Integrity Scenario
+Network conditions:
 
 ```text
 Offline
-→ Create Expense
-→ Attach Receipt
-→ Close App
-→ Reopen
-→ Reconnect
-→ Upload
-→ Sync
-```
-
-Verify:
-
-```text
-Transaction exists
-Receipt exists
-Attachment relationship preserved
+Slow 3G
+Flaky wifi
 ```
 
 ---
 
-# 99. AI Integrity Scenario
+# 88. Network Simulation
+
+Test:
 
 ```text
-Known Financial Dataset
- ↓
-Ask AI:
-"How much did I spend on food?"
- ↓
-Tool
- ↓
-Trusted Result
- ↓
-AI
+Offline entry
+Online catch-up
+Timeouts
+Partial responses
 ```
 
-Verify:
+Core finance must remain Interactive while offline.
+
+---
+
+# 89. Performance Testing Ownership
 
 ```text
-AI answer matches trusted calculation
-No cross-user data exposed
+Unit / microbench   packages/types money ops
+Device tests        list scroll, save latency
+API tests           p95 on staging
+Load tests          CI or scheduled, not every PR unless gated
+```
+
+Critical domain PRs may require extra suites (`TESTING.md`).
+
+---
+
+# 90. CI Performance Gates
+
+Every PR already runs:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+```
+
+Do not add multi-minute load tests to every PR.
+
+Add:
+
+```text
+Microbenchmarks for money if they stay fast
+Bundle / list-size budgets when they exist
+Scheduled staging load jobs
+```
+
+A regression that makes save-transaction Slow is a release blocker once measured.
+
+---
+
+# 91. Production Monitoring
+
+When cloud exists, observe:
+
+## Application
+
+```text
+Startup
+Crashes
+API latency
+Error rate
+```
+
+## Database
+
+```text
+Connection health
+Slow queries
+Migration status
+```
+
+## Jobs
+
+```text
+Queue depth
+Failure rate
+Retry count
+```
+
+## Sync
+
+```text
+Success rate
+Conflict rate
+Failed operations
+```
+
+## AI
+
+```text
+Latency
+Errors
+Token usage where available
+Provider availability
 ```
 
 ---
 
-# 100. Notification Integrity Scenario
+# 92. Application Metrics
+
+Minimum API metrics:
 
 ```text
-Budget at 80%
- ↓
-Event generated
- ↓
-Worker retry
- ↓
-App refresh
- ↓
-Sync
+Request rate
+p50 / p95 / p99 latency by route
+Error rate by route
+In-flight requests
 ```
 
-Verify:
+Minimum mobile metrics (privacy-preserving):
 
 ```text
-One logical notification
+Cold start
+Save transaction duration
+List frame drops if measurable
+Crash-free sessions
+```
+
+Do not ship raw financial amounts to analytics vendors.
+
+---
+
+# 93. Database Metrics
+
+```text
+Slow query log
+Index usage
+Locks / waits
+Replication lag if any
+Disk growth
+```
+
+A new slow query on `transactions` is a performance incident.
+
+---
+
+# 94. Sync Metrics
+
+```text
+Operations pending
+Operations failed
+Conflict count
+Catch-up duration
+Bytes per session
 ```
 
 ---
 
-# 101. Recovery Testing
-
-Simulate:
+# 95. AI Metrics
 
 ```text
-App Crash
-Network Loss
-Worker Restart
-Database Connection Drop
-Provider Timeout
-Upload Interruption
-Sync Interruption
+Provider latency
+Timeout rate
+Cache hit rate
+Fallback rate
 ```
 
-Expected:
-
-```text
-Safe Retry
-or
-Recoverable Failure
-```
-
-not silent corruption.
+AI outage must not increment transaction-create error rate.
 
 ---
 
-# 102. Data Reconciliation Tests
+# 96. Alerts
 
-Critical systems should have reconstruction tests:
+Alert on:
 
 ```text
-Account Balance
-Outstanding Debt
-Goal Progress
-Budget Spent
+p95 transaction create above budget
+Error rate spike
+Queue depth / oldest job
+Postgres connection saturation
+Sync failure rate
+Disk / backup failures
 ```
 
-Verify cached/derived results against source records.
+Do not alert on AI latency as if it were ledger availability.
 
 ---
 
-# 103. Regression Tests
+# 97. Profiling
 
-Every serious production defect should result in:
+Profile before rewriting architecture.
 
 ```text
-Code Fix
+React Native / JS CPU
+SQLite EXPLAIN QUERY PLAN
+Postgres EXPLAIN ANALYZE
+API flamegraphs on staging
+```
+
+Guessing is not a strategy (`DEC-019` analogue: simplest optimization that is measured).
+
+---
+
+# 98. Regression Policy
+
+A performance regression is a defect when it:
+
+```text
+Moves a P0 path out of its latency class
+Makes Large datasets unusable on low-end devices
+Turns a synchronous path into an unbounded wait
+```
+
+Fix with a test or benchmark where practical (`TESTING.md` flaky/regression policy).
+
+---
+
+# 99. Optimization Rule
+
+```text
+Measure
+  ↓
+Identify the actual bottleneck
+  ↓
+Change the smallest thing
+  ↓
+Re-measure
+  ↓
+Keep correctness tests green
+```
+
+Forbidden optimizations:
+
+```text
+IEEE floats for money
+Last-write-wins on ledger conflicts
+Removing indexes that writes "feel slow"
+Blocking the UI on AI
+```
+
+---
+
+# 100. Acceptance Criteria
+
+Performance is acceptable when:
+
+```text
+Transaction entry stays Interactive on low-end Android
+Lists stay smooth at 10,000+ rows with pagination
+Search stays local and indexed
+Balances match the ledger and remain cheap
+Health stays cheap
+AI / reports / forecasts never block saves
+Heavy work is async with feedback
+Budgets are monitored once cloud exists
+```
+
+---
+
+# 101. Mobile Acceptance Criteria
+
+```text
+[ ] Cold start reaches a usable screen without analytics/AI
+[ ] Save transaction does not require network
+[ ] Tab navigation feels Instant
+[ ] Transaction list is virtualized and paged
+[ ] Search does not load the full table into JS
+[ ] Home totals do not scan the entire ledger in UI code
+[ ] Memory stable on soak with Large dataset
+[ ] Receipts do not decode full-resolution images in lists
+```
+
+---
+
+# 102. API Acceptance Criteria
+
+```text
+[ ] Health has no heavy dependencies
+[ ] Finance mutations persist then enqueue side effects
+[ ] Collections are paginated
+[ ] No N+1 on list/report paths
+[ ] Indexes match real queries
+[ ] Redis is not used as a ledger
+[ ] Timeouts exist on every I/O boundary
+[ ] Overload sheds AI before transaction create
+```
+
+---
+
+# 103. Performance Checklist
+
+```text
+[ ] P0 paths mapped to latency classes
+[ ] SQLite indexes exist for list/search
+[ ] Virtualized lists
+[ ] Decimal money unchanged
+[ ] Async boundary documented for reports/AI/sync
+[ ] Cache keys include version + input hash
+[ ] Load test plan uses synthetic data
+[ ] Dashboards/alerts planned for Phase 6
+```
+
+---
+
+# 104. Final Performance Principle
+
+> **The save-transaction path must stay correct and local. Everything else may be slower, cached, or asynchronous — never the other way around.**
+
+```text
+Correct Ledger
 +
-Regression Test
-```
-
-Especially for:
-
-```text
-Financial Calculation
-Authorization
-Sync
-Data Loss
-Duplicate Creation
+Fast Entry
++
+Paged History
++
+Measured Budgets
++
+Async Intelligence
 ```
 
 ---
 
-# 104. Test Data Privacy
-
-Never use real financial information in ordinary:
-
-```text
-Unit Tests
-CI
-Integration Tests
-E2E
-AI Evaluation
-Performance Tests
-```
-
-Use synthetic data.
-
----
-
-# 105. Production Incident Reproduction
-
-If real data is ever required:
-
-```text
-Minimize
-Redact
-Anonymize
-Control Access
-Destroy Temporary Copy
-```
-
-Do not casually copy production financial datasets into development environments.
-
----
-
-# 106. Definition of Done
-
-A production feature is considered tested when appropriate coverage exists for:
-
-```text
-Happy Path
-Validation Failure
-Authorization Failure
-Edge Cases
-Offline Behavior
-Sync Behavior
-Error Recovery
-```
-
-Critical financial features require stronger end-to-end coverage.
-
----
-
-# 107. Quality Metrics
-
-Track test-system health such as:
-
-```text
-CI Pass Rate
-Test Runtime
-Flaky Test Rate
-Escaped Defects
-Regression Rate
-Critical Module Coverage
-E2E Success Rate
-```
-
-A growing test suite must remain maintainable.
-
----
-
-# 108. Test Suite Maintenance
-
-Regularly remove:
-
-```text
-Duplicate Tests
-Obsolete Tests
-Unstable Tests
-Redundant Fixtures
-```
-
-The test suite is production code and should be maintained accordingly.
-
----
-
-# 109. Final Testing Quality Bar
-
-The testing system should prove:
-
-```text
-The numbers are correct.
-The data remains private.
-Financial writes are atomic.
-Offline work survives interruption.
-Sync does not duplicate or lose events.
-Reports reconcile.
-Forecasts are measurable.
-AI cannot override financial truth.
-Notifications do not spam or duplicate.
-Failures are recoverable.
-```
-
----
-
-# 110. Relationship With Other Engineering Documents
-
-Engineering documentation sequence:
+# 105. Relationship With Other Engineering Documents
 
 ```text
 DEVELOPMENT_GUIDELINES.md
@@ -2305,31 +1864,30 @@ PERFORMANCE.md
 DEPLOYMENT.md
 ```
 
-This document defines the production **testing strategy**.
+This document defines **how fast and how large** the system should remain.
+
+`TESTING.md` defines how to prove it.
+
+`DEPLOYMENT.md` defines how production is run, scaled, and observed.
+
+Related specifications:
+
+```text
+docs/architecture/SYSTEM_ARCHITECTURE.md
+docs/architecture/LOCAL_STORAGE.md
+docs/architecture/DATABASE.md
+docs/architecture/API.md
+docs/architecture/SYNC_ARCHITECTURE.md
+docs/product/REPORTING.md
+docs/ai/AI.md
+docs/ai/AI_FORECASTING.md
+docs/MEDIA_FILES.md
+```
 
 The next engineering document is:
 
 ```text
-docs/engineering/PERFORMANCE.md
+docs/engineering/DEPLOYMENT.md
 ```
 
-It should define:
-
-- Mobile performance
-- API performance
-- Database performance
-- SQLite performance
-- Sync throughput
-- Background jobs
-- AI latency
-- Forecasting latency
-- Report generation
-- Large dataset strategy
-- Caching
-- Memory usage
-- Network usage
-- Performance budgets
-- Load testing
-- Monitoring
-- Acceptance criteria
-  """
+It should define environments, packaging, migrations, rollback, and production operations. That document already exists as an approved baseline.

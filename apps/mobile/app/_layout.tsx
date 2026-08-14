@@ -11,7 +11,9 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="accounts" options={{ headerShown: true, title: 'Accounts' }} />
+        <Stack.Screen name="budgets" options={{ headerShown: true, title: 'Budgets' }} />
         <Stack.Screen name="categories" options={{ headerShown: true, title: 'Categories' }} />
+        <Stack.Screen name="recurring" options={{ headerShown: true, title: 'Recurring' }} />
       </Stack>
     </FinanceProvider>
   );

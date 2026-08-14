@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 3;
 
 const MIGRATION_V1 = `
 CREATE TABLE IF NOT EXISTS user_settings (
@@ -77,6 +77,59 @@ CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(transaction_dat
 CREATE INDEX IF NOT EXISTS idx_transactions_transfer_group ON transactions(transfer_group_id);
 `;
 
+const MIGRATION_V2 = `
+CREATE TABLE IF NOT EXISTS budgets (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  amount TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  period_type TEXT NOT NULL,
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  category_id TEXT,
+  status TEXT NOT NULL DEFAULT 'ACTIVE',
+  alert_threshold_percent INTEGER NOT NULL DEFAULT 80,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(start_date, end_date, status, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category_id, deleted_at);
+`;
+
+const MIGRATION_V3 = `
+CREATE TABLE IF NOT EXISTS recurring_rules (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  name TEXT NOT NULL,
+  amount TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  destination_account_id TEXT,
+  category_id TEXT,
+  frequency TEXT NOT NULL,
+  interval_value INTEGER NOT NULL DEFAULT 1,
+  start_date TEXT NOT NULL,
+  end_date TEXT,
+  next_occurrence TEXT NOT NULL,
+  auto_create INTEGER NOT NULL DEFAULT 0,
+  reminder_enabled INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'ACTIVE',
+  note TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (account_id) REFERENCES accounts(id),
+  FOREIGN KEY (destination_account_id) REFERENCES accounts(id),
+  FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_recurring_rules_next ON recurring_rules(next_occurrence, status, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_recurring_rules_account ON recurring_rules(account_id, deleted_at);
+`;
+
 export async function migrate(db: SQLiteDatabase): Promise<void> {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const current = row?.user_version ?? 0;
@@ -84,5 +137,15 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
   if (current < 1) {
     await db.execAsync(MIGRATION_V1);
     await db.execAsync('PRAGMA user_version = 1');
+  }
+
+  if (current < 2) {
+    await db.execAsync(MIGRATION_V2);
+    await db.execAsync('PRAGMA user_version = 2');
+  }
+
+  if (current < 3) {
+    await db.execAsync(MIGRATION_V3);
+    await db.execAsync('PRAGMA user_version = 3');
   }
 }

@@ -9,17 +9,23 @@ import {
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { getDatabase } from '../database/client';
 import { AccountRepository } from '../repositories/account-repository';
+import { BudgetRepository } from '../repositories/budget-repository';
 import { CategoryRepository } from '../repositories/category-repository';
+import { RecurringRuleRepository } from '../repositories/recurring-rule-repository';
 import { SettingsRepository } from '../repositories/settings-repository';
 import { TransactionRepository } from '../repositories/transaction-repository';
 import { AccountService } from '../features/accounts/services/account-service';
+import { BudgetService } from '../features/budgets/services/budget-service';
 import { CategoryService } from '../features/categories/services/category-service';
+import { RecurringRuleService } from '../features/recurring/services/recurring-rule-service';
 import { TransactionService } from '../features/transactions/services/transaction-service';
 
 type FinanceServices = {
   db: SQLiteDatabase;
   accounts: AccountService;
+  budgets: BudgetService;
   categories: CategoryService;
+  recurringRules: RecurringRuleService;
   transactions: TransactionService;
   settings: SettingsRepository;
   refresh: () => void;
@@ -39,12 +45,16 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => {
     if (!db) return null;
     const accountRepo = new AccountRepository(db);
+    const budgetRepo = new BudgetRepository(db);
     const categoryRepo = new CategoryRepository(db);
+    const recurringRuleRepo = new RecurringRuleRepository(db);
     const transactionRepo = new TransactionRepository(db);
     return {
       db,
       accounts: new AccountService(accountRepo),
+      budgets: new BudgetService(budgetRepo, categoryRepo, transactionRepo),
       categories: new CategoryService(categoryRepo),
+      recurringRules: new RecurringRuleService(recurringRuleRepo, accountRepo, categoryRepo),
       transactions: new TransactionService(transactionRepo, accountRepo),
       settings: new SettingsRepository(db),
       refresh: () => setNonce((n) => n + 1),

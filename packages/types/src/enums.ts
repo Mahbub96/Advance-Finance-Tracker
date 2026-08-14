@@ -52,6 +52,42 @@ export const TransactionStatus = {
 
 export type TransactionStatus = (typeof TransactionStatus)[keyof typeof TransactionStatus];
 
+export const BudgetPeriodType = {
+  MONTHLY: 'MONTHLY',
+  CUSTOM: 'CUSTOM',
+} as const;
+
+export type BudgetPeriodType = (typeof BudgetPeriodType)[keyof typeof BudgetPeriodType];
+
+export const BudgetStatus = {
+  ACTIVE: 'ACTIVE',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type BudgetStatus = (typeof BudgetStatus)[keyof typeof BudgetStatus];
+
+export const RecurringFrequency = {
+  DAILY: 'DAILY',
+  WEEKLY: 'WEEKLY',
+  MONTHLY: 'MONTHLY',
+  YEARLY: 'YEARLY',
+} as const;
+
+export type RecurringFrequency = (typeof RecurringFrequency)[keyof typeof RecurringFrequency];
+
+export const RecurringRuleStatus = {
+  ACTIVE: 'ACTIVE',
+  PAUSED: 'PAUSED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type RecurringRuleStatus =
+  (typeof RecurringRuleStatus)[keyof typeof RecurringRuleStatus];
+
 export const ACCOUNT_TYPES = Object.values(AccountType);
 export const TRANSACTION_TYPES = Object.values(TransactionType);
 export const CATEGORY_KINDS = Object.values(CategoryKind);
+export const BUDGET_PERIOD_TYPES = Object.values(BudgetPeriodType);
+export const BUDGET_STATUSES = Object.values(BudgetStatus);
+export const RECURRING_FREQUENCIES = Object.values(RecurringFrequency);
+export const RECURRING_RULE_STATUSES = Object.values(RecurringRuleStatus);

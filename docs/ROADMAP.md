@@ -1,61 +1,215 @@
-# Roadmap
+# Personal Finance — Roadmap
 
-> Implementation phases and releases.
+**Document:** `ROADMAP.md`  
+**Version:** 1.0  
+**Status:** Living Log  
+**Last Updated:** 2026-08-14  
+**Product:** Personal Finance  
+**Repository:** Advance-Finance-Tracker  
+**Purpose:** Define implementation phases and releases  
+**Current Phase:** Phase 3 — Core Product (in progress)
 
-## Phase 0 — Product Discovery
+---
 
-- [x] DOCS.md
-- [x] 01_PROJECT_VISION.md
-- [x] 02_PRD.md
-- [x] 03_PRODUCT_SCOPE.md
-- [x] 04_FEATURES.md
+# 1. Purpose
 
-## Phase 1 — UX Research
+This document defines committed implementation phases and releases.
 
-- [x] UX_RESEARCH.md
-- [x] INFORMATION_ARCHITECTURE.md
-- [x] USER_FLOWS.md
-- [x] UI_DESIGN.md
-- [x] DESIGN_SYSTEM.md
+It is not a dump of every possible idea. Uncommitted ideas belong in:
 
-## Phase 2 — Technical Architecture
+```text
+docs/IDEAS_BACKLOG.md
+```
 
-- [x] SYSTEM_ARCHITECTURE.md
-- [x] DATABASE.md
-- [x] LOCAL_STORAGE.md
-- [x] SYNC_ARCHITECTURE.md
-- [x] API.md
-- [x] SECURITY.md
+Product behavior belongs in:
 
-## Phase 3 — Core Product (in progress)
+```text
+docs/02_PRD.md
+docs/03_PRODUCT_SCOPE.md
+docs/04_FEATURES.md
+docs/product/
+```
 
-Release 1 — Financial Foundation (local-first):
+---
 
-- [x] Tooling / runnable monorepo
-- [x] Local SQLite
+# 2. Current Status
+
+```text
+Phase 0 — Product Discovery        Done
+Phase 1 — UX Research              Done
+Phase 2 — Technical Architecture   Done
+Phase 3 — Core Product             In progress
+Phase 4 — Advanced Finance         Not started
+Phase 5 — Intelligence             Not started
+Phase 6 — Cloud                    Not started
+Phase 7 — Public Release           Not started
+```
+
+Release 1 of Phase 3 (local-first financial foundation) is implemented:
+
+```text
+Tooling / runnable monorepo
+Local SQLite
+Onboarding
+Accounts
+Categories
+Transactions
+Transfers
+Home + basic totals
+NestJS GET /health only
+```
+
+The mobile app works fully offline. Cloud finance APIs wait for Phase 6.
+
+---
+
+# 3. How to Use This Document
+
+Mark work `[x]` only after it is implemented or the owning document is an approved baseline.
+
+Do not invent new phases here. Align with `docs/DOCS.md`.
+
+New ideas go to `IDEAS_BACKLOG.md` first.
+
+---
+
+# 4. Phase 0 — Product Discovery
+
+- [x] `docs/DOCS.md`
+- [x] `docs/01_PROJECT_VISION.md`
+- [x] `docs/02_PRD.md`
+- [x] `docs/03_PRODUCT_SCOPE.md`
+- [x] `docs/04_FEATURES.md`
+
+---
+
+# 5. Phase 1 — UX Research
+
+- [x] `docs/ux/UX_RESEARCH.md`
+- [x] `docs/ux/INFORMATION_ARCHITECTURE.md`
+- [x] `docs/ux/USER_FLOWS.md`
+- [x] `docs/ux/UI_DESIGN.md`
+- [x] `docs/ux/DESIGN_SYSTEM.md`
+
+---
+
+# 6. Phase 2 — Technical Architecture
+
+- [x] `docs/architecture/SYSTEM_ARCHITECTURE.md`
+- [x] `docs/architecture/DATABASE.md`
+- [x] `docs/architecture/LOCAL_STORAGE.md`
+- [x] `docs/architecture/SYNC_ARCHITECTURE.md`
+- [x] `docs/architecture/API.md`
+- [x] `docs/architecture/SECURITY.md`
+
+---
+
+# 7. Phase 3 — Core Product (in progress)
+
+Accounts · Categories · Transactions · Transfers · Budgets · Recurring Transactions
+
+## Release 1 — Financial Foundation (local-first)
+
+- [x] Tooling / runnable pnpm monorepo
+- [x] Local SQLite schema
+- [x] Onboarding (currency + first account)
 - [x] Accounts
 - [x] Categories
-- [x] Transactions
+- [x] Transactions (expense / income)
 - [x] Transfers
-- [x] Onboarding + Home + basic totals
+- [x] Home + basic totals
+- [x] Shared money types (`packages/types`)
+- [x] NestJS health shell
+- [x] Lint / typecheck / test / CI
 
-Later in Phase 3:
+## Remaining Phase 3
 
 - [ ] Budgets
-- [ ] Recurring Transactions
+- [ ] Recurring transactions
 
-## Phase 4 — Advanced Finance
+---
 
-Lending & Borrowing · Financial Goals · Reports · Analytics · Notifications
+# 8. Phase 4 — Advanced Finance
 
-## Phase 5 — Intelligence
+- [ ] Lending & borrowing
+- [ ] Financial goals
+- [ ] Reports
+- [ ] Analytics
+- [ ] Notifications
 
-Forecasting · Financial Health · Recommendations · AI Insights · AI Assistant
+Owning specs already exist under `docs/product/`.
 
-## Phase 6 — Cloud
+---
 
-Authentication · Cloud Sync · Backup · Multi-device support
+# 9. Phase 5 — Intelligence
 
-## Phase 7 — Public Release
+- [ ] Forecasting
+- [ ] Financial health
+- [ ] Recommendations
+- [ ] AI insights
+- [ ] AI assistant
 
-Testing · Security Audit · Performance · Documentation · CI/CD · Android Release · Open-source Release
+AI remains an enhancement layer. Core finance must work without it.
+
+Owning specs exist under `docs/ai/`.
+
+---
+
+# 10. Phase 6 — Cloud
+
+- [ ] Authentication
+- [ ] Cloud sync
+- [ ] Backup
+- [ ] Multi-device support
+
+Until this phase, the NestJS API stays health-only. PostgreSQL is the future cloud source of truth; SQLite remains the local operational store.
+
+---
+
+# 11. Phase 7 — Public Release
+
+- [ ] Testing complete against `TESTING.md`
+- [ ] Security audit against `SECURITY.md`
+- [ ] Performance against `PERFORMANCE.md`
+- [ ] Documentation reconciled
+- [ ] CI/CD production path
+- [ ] Android release
+- [ ] Open-source release
+
+---
+
+# 12. Engineering Documentation
+
+- [x] `docs/engineering/DEVELOPMENT_GUIDELINES.md`
+- [x] `docs/engineering/TESTING.md`
+- [x] `docs/engineering/PERFORMANCE.md`
+- [x] `docs/engineering/DEPLOYMENT.md`
+- [x] `docs/DECISION_LOG.md`
+
+---
+
+# 13. Roadmap Rules
+
+```text
+Idea            → IDEAS_BACKLOG.md
+Committed work  → this file
+Behavior        → PRD / FEATURES / product specs
+Why             → DECISION_LOG.md
+Shipped change  → CHANGELOG.md
+```
+
+Do not mark a phase complete because the specification exists. Mark it complete when the software exists, except Phase 0–2 which are documentation phases.
+
+---
+
+# 14. Related Documents
+
+```text
+docs/DOCS.md
+docs/IDEAS_BACKLOG.md
+docs/CHANGELOG.md
+docs/DECISION_LOG.md
+docs/02_PRD.md
+docs/03_PRODUCT_SCOPE.md
+docs/04_FEATURES.md
+```

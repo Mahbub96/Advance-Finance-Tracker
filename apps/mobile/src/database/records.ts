@@ -1,4 +1,6 @@
 import type { AccountType, MoneyString } from '@personal-finance/types';
+import type { BudgetPeriodType, BudgetStatus } from '@personal-finance/types';
+import type { RecurringFrequency, RecurringRuleStatus } from '@personal-finance/types';
 
 export type AccountRecord = {
   id: string;
@@ -62,4 +64,43 @@ export type SettingsRecord = {
   defaultAccountId: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type BudgetRecord = {
+  id: string;
+  name: string;
+  amount: MoneyString;
+  currency: string;
+  periodType: BudgetPeriodType;
+  startDate: string;
+  endDate: string;
+  categoryId: string | null;
+  status: BudgetStatus;
+  alertThresholdPercent: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+export type RecurringRuleRecord = {
+  id: string;
+  type: 'EXPENSE' | 'INCOME' | 'TRANSFER';
+  name: string;
+  amount: MoneyString;
+  currency: string;
+  accountId: string;
+  destinationAccountId: string | null;
+  categoryId: string | null;
+  frequency: RecurringFrequency;
+  intervalValue: number;
+  startDate: string;
+  endDate: string | null;
+  nextOccurrence: string;
+  autoCreate: boolean;
+  reminderEnabled: boolean;
+  status: RecurringRuleStatus;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
 };

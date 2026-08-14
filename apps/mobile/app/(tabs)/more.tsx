@@ -28,6 +28,18 @@ export default function MoreScreen() {
             <Text style={{ color: colors.textSecondary }}>Classify spending and income</Text>
           </Card>
         </Link>
+        <Link href="/budgets" asChild>
+          <Card>
+            <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>Budgets</Text>
+            <Text style={{ color: colors.textSecondary }}>Monthly spending limits</Text>
+          </Card>
+        </Link>
+        <Link href="/recurring" asChild>
+          <Card>
+            <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>Recurring</Text>
+            <Text style={{ color: colors.textSecondary }}>Expected bills and income</Text>
+          </Card>
+        </Link>
       </View>
     </Screen>
   );
