@@ -326,6 +326,13 @@ export default function MoreScreen() {
           title="Savings Goals"
           subtitle="Target milestones with automatic pace calculator"
         />
+        <HubMenuItem
+          href="/pull-to-refresh-demo"
+          icon="💫"
+          title="Pull-to-Refresh Showcase"
+          subtitle="2026 elastic physics, vector progress & state machine"
+          badge="NEW"
+        />
       </View>
 
       {/* 6. Cloud & API Server Connectivity */}

@@ -2,6 +2,7 @@ export type Env = {
   nodeEnv: string;
   port: number;
   host: string;
+  debug: boolean;
 };
 
 export function loadEnv(): Env {
@@ -10,9 +11,15 @@ export function loadEnv(): Env {
     throw new Error('API_PORT must be a positive integer');
   }
 
+  const debug =
+    process.env.DEBUG === 'true' ||
+    process.env.API_DEBUG === 'true' ||
+    process.env.NODE_ENV !== 'production';
+
   return {
     nodeEnv: process.env.NODE_ENV ?? 'development',
     port,
     host: process.env.API_HOST ?? '0.0.0.0',
+    debug,
   };
 }
