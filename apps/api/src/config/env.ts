@@ -1,3 +1,5 @@
+import { DEFAULT_API_PORT } from '@personal-finance/config';
+
 export type Env = {
   nodeEnv: string;
   port: number;
@@ -6,7 +8,7 @@ export type Env = {
 };
 
 export function loadEnv(): Env {
-  const port = Number(process.env.API_PORT ?? 3000);
+  const port = Number(process.env.API_PORT ?? DEFAULT_API_PORT);
   if (!Number.isInteger(port) || port < 1) {
     throw new Error('API_PORT must be a positive integer');
   }

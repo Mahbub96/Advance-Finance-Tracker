@@ -9,7 +9,8 @@
     "noEmit": true,
     "types": ["node", "jest"],
     "paths": {
-      "@personal-finance/types": ["../../packages/types/index.ts"]
+      "@personal-finance/types": ["../../packages/types/index.ts"],
+      "@personal-finance/config": ["../../packages/config/index.ts"]
     }
   },
   "include": ["src/**/*.ts"]

@@ -5,6 +5,7 @@ import type {
   SyncUploadBatchRequest,
   SyncUploadBatchResponse,
 } from '@personal-finance/types';
+import { DEFAULT_API_URL } from '@personal-finance/config';
 
 export interface HealthCheckResult {
   status: 'ok' | 'degraded' | 'error';
@@ -35,8 +36,8 @@ export class ApiClient {
   private getAuthToken?: () => Promise<string | null> | string | null;
 
   constructor(config: ApiClientConfig = {}) {
-    // Default fallback to remote API server
-    this.baseUrl = config.baseUrl?.replace(/\/$/, '') || 'http://140.245.217.109:5500/api/v1';
+    // Default fallback to centrally configured API URL
+    this.baseUrl = config.baseUrl?.replace(/\/$/, '') || DEFAULT_API_URL;
     this.timeoutMs = config.timeoutMs ?? 3000;
     this.getAuthToken = config.getAuthToken;
   }

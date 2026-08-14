@@ -4,6 +4,10 @@
   "version": "0.0.0",
   "main": "./index.ts",
   "types": "./index.ts",
+  "dependencies": {
+    "@personal-finance/config": "workspace:*",
+    "@personal-finance/types": "workspace:*"
+  },
   "scripts": {
     "lint": "node -e \"process.exit(0)\"",
     "typecheck": "node -e \"process.exit(0)\"",
