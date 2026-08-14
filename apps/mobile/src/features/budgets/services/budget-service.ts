@@ -54,16 +54,29 @@ export class BudgetService {
       budgets.map(async (budget) => {
         const rows = await this.transactions.listByDateRange(budget.startDate, budget.endDate);
         const matchingCategoryIds = budget.categoryId
-          ? [budget.categoryId, ...categories.filter((c) => c.parentId === budget.categoryId).map((c) => c.id)]
+          ? [
+              budget.categoryId,
+              ...categories.filter((c) => c.parentId === budget.categoryId).map((c) => c.id),
+            ]
           : null;
         const spent = rows
           .filter((tx) => tx.type === TransactionType.EXPENSE)
-          .filter((tx) => !matchingCategoryIds || (tx.categoryId !== null && matchingCategoryIds.includes(tx.categoryId)))
-          .reduce((total, tx) => moneyString(parseMoney(total).plus(parseMoney(tx.amount))), '0.00');
+          .filter(
+            (tx) =>
+              !matchingCategoryIds ||
+              (tx.categoryId !== null && matchingCategoryIds.includes(tx.categoryId)),
+          )
+          .reduce(
+            (total, tx) => moneyString(parseMoney(total).plus(parseMoney(tx.amount))),
+            '0.00',
+          );
         const remaining = subtractMoney(budget.amount, spent);
         const utilizationPercent = parseMoney(budget.amount).isZero()
           ? 0
-          : Math.min(999, parseMoney(spent).div(parseMoney(budget.amount)).times(100).round().toNumber());
+          : Math.min(
+              999,
+              parseMoney(spent).div(parseMoney(budget.amount)).times(100).round().toNumber(),
+            );
         const risk =
           compareMoney(spent, budget.amount) > 0
             ? 'EXCEEDED'
@@ -147,4 +160,3 @@ export class BudgetService {
     });
   }
 }
-

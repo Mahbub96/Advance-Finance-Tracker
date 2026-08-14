@@ -1,11 +1,12 @@
 import { DebtType, type DebtType as DebtTypeEnum } from '@personal-finance/types';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, StyleSheet } from 'react-native';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { Input } from '../../src/components/Input';
 import { ScrollScreen } from '../../src/components/Screen';
+import { SegmentedControl } from '../../src/components/SegmentedControl';
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
@@ -25,102 +26,180 @@ export default function NewDebtScreen() {
   const [accountId, setAccountId] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const currency = settings?.baseCurrency ?? 'BDT';
+
+  const typeOptions: Array<{ id: DebtTypeEnum; label: string }> = [
+    { id: DebtType.LENT, label: '🤝 I Lent Money' },
+    { id: DebtType.BORROWED, label: '⏳ I Borrowed' },
+  ];
+
+  const handleCreate = async () => {
+    if (!personName.trim()) {
+      setError('Please provide person name');
+      return;
+    }
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+
+    try {
+      await debts.create({
+        type,
+        personName: personName.trim(),
+        amount: amount.trim(),
+        currency,
+        dueDate: dueDate.trim() || null,
+        accountId,
+        note: note.trim() || undefined,
+      });
+      refresh();
+      router.back();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not save debt record');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <ScrollScreen>
-      <Text style={[typography.title, { color: colors.textPrimary }]}>Add Loan / Borrowing</Text>
-      
-      {/* Type toggle */}
-      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-        <Pressable
-          onPress={() => setType(DebtType.LENT)}
-          style={{
-            flex: 1,
-            padding: spacing.md,
-            borderRadius: radius.md,
-            alignItems: 'center',
-            backgroundColor: type === DebtType.LENT ? colors.income : colors.surfaceMuted,
-          }}
-        >
-          <Text style={{ color: type === DebtType.LENT ? '#fff' : colors.textPrimary, fontWeight: '700' }}>
-            I Lent Money
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setType(DebtType.BORROWED)}
-          style={{
-            flex: 1,
-            padding: spacing.md,
-            borderRadius: radius.md,
-            alignItems: 'center',
-            backgroundColor: type === DebtType.BORROWED ? colors.danger : colors.surfaceMuted,
-          }}
-        >
-          <Text style={{ color: type === DebtType.BORROWED ? '#fff' : colors.textPrimary, fontWeight: '700' }}>
-            I Borrowed Money
-          </Text>
-        </Pressable>
+      <View style={{ gap: 2 }}>
+        <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
+          LOAN RECORDING
+        </Text>
+        <Text style={[typography.title, { color: colors.textPrimary }]}>Record Loan / Debt</Text>
       </View>
 
-      <Input label="Person Name" value={personName} onChangeText={setPersonName} placeholder="e.g. Rahim" />
-      <Input label="Amount" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="5000" />
-      <Input label="Expected Due Date (Optional, YYYY-MM-DD)" value={dueDate} onChangeText={setDueDate} placeholder="2026-09-30" />
-      <Input label="Note (Optional)" value={note} onChangeText={setNote} placeholder="e.g. For project materials" />
+      {/* Segmented Loan Type */}
+      <SegmentedControl options={typeOptions} value={type} onChange={setType} />
 
-      {/* Account selection */}
-      <Card style={{ gap: spacing.sm }}>
-        <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>Source / Destination Account</Text>
-        <Pressable
-          onPress={() => setAccountId(null)}
-          style={{
-            padding: spacing.md,
-            borderRadius: radius.md,
-            backgroundColor: accountId === null ? colors.primary : colors.surfaceMuted,
-          }}
-        >
-          <Text style={{ color: accountId === null ? colors.primaryForeground : colors.textPrimary }}>
-            None (No immediate cash movement)
+      <Card style={{ gap: spacing.md, backgroundColor: colors.surfaceElevated }}>
+        <Input
+          label={
+            type === DebtType.LENT ? 'Borrower Name (Who took money)' : 'Lender Name (Who lent you)'
+          }
+          value={personName}
+          onChangeText={setPersonName}
+          placeholder="e.g. Tanvir, Rahim, Acme Bank"
+        />
+
+        <Input
+          label="Principal Amount"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="decimal-pad"
+          placeholder="5000"
+          prefix={currency}
+        />
+
+        <Input
+          label="Expected Due Date (Optional, YYYY-MM-DD)"
+          value={dueDate}
+          onChangeText={setDueDate}
+          placeholder="2026-09-30"
+          helperText="Used to track pending repayments and overdue alerts."
+        />
+
+        <Input
+          label="Note (Optional)"
+          value={note}
+          onChangeText={setNote}
+          placeholder="e.g. Shared dinner split, Project advance"
+        />
+
+        {/* Account selection */}
+        <View style={{ gap: spacing.xs }}>
+          <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
+            Settlement Account (Optional)
           </Text>
-        </Pressable>
-        {accounts.map((acc) => (
-          <Pressable
-            key={acc.id}
-            onPress={() => setAccountId(acc.id)}
-            style={{
-              padding: spacing.md,
-              borderRadius: radius.md,
-              backgroundColor: accountId === acc.id ? colors.primary : colors.surfaceMuted,
-            }}
-          >
-            <Text style={{ color: accountId === acc.id ? colors.primaryForeground : colors.textPrimary }}>
-              {acc.name} ({acc.currency})
-            </Text>
-          </Pressable>
-        ))}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+            <Pressable
+              onPress={() => setAccountId(null)}
+              style={[
+                styles.accountChip,
+                {
+                  backgroundColor: accountId === null ? colors.primary : colors.surface,
+                  borderColor: accountId === null ? colors.primary : colors.border,
+                  borderRadius: radius.md,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color: accountId === null ? colors.primaryForeground : colors.textPrimary,
+                  fontWeight: accountId === null ? '600' : '400',
+                  fontSize: 13,
+                }}
+              >
+                No cash impact
+              </Text>
+            </Pressable>
+
+            {accounts.map((acc) => {
+              const isSelected = accountId === acc.id;
+              return (
+                <Pressable
+                  key={acc.id}
+                  onPress={() => setAccountId(acc.id)}
+                  style={[
+                    styles.accountChip,
+                    {
+                      backgroundColor: isSelected ? colors.primary : colors.surface,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      borderRadius: radius.md,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: isSelected ? colors.primaryForeground : colors.textPrimary,
+                      fontWeight: isSelected ? '600' : '400',
+                      fontSize: 13,
+                    }}
+                  >
+                    {acc.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
       </Card>
 
-      {error ? <Text style={{ color: colors.danger }}>{error}</Text> : null}
+      {error ? (
+        <View
+          style={{
+            backgroundColor: colors.dangerMuted,
+            padding: spacing.md,
+            borderRadius: radius.md,
+          }}
+        >
+          <Text style={{ color: colors.danger, fontSize: 13 }}>⚠️ {error}</Text>
+        </View>
+      ) : null}
 
       <Button
-        label="Save"
-        onPress={() => {
-          void debts
-            .create({
-              type,
-              personName,
-              amount,
-              currency: settings?.baseCurrency ?? 'BDT',
-              dueDate: dueDate || null,
-              accountId,
-              note,
-            })
-            .then(() => {
-              refresh();
-              router.back();
-            })
-            .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Could not save'));
-        }}
+        label={busy ? 'Saving...' : 'Record Loan'}
+        loading={busy}
+        onPress={() => void handleCreate()}
+        size="lg"
       />
     </ScrollScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  accountChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

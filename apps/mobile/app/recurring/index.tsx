@@ -1,23 +1,30 @@
 import { formatMoneyDisplay } from '@personal-finance/types';
-import { Link } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Text, View } from 'react-native';
+import { Badge, type BadgeVariant } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { EmptyState } from '../../src/components/EmptyState';
 import { ScrollScreen } from '../../src/components/Screen';
 import { useRecurringRules } from '../../src/hooks/use-recurring-rules';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
 
-function dueText(days: number): string {
-  if (days < 0) return `${Math.abs(days)}d overdue`;
-  if (days === 0) return 'Due today';
-  return `Due in ${days}d`;
+function getDueBadge(dueState: string, days: number): { label: string; variant: BadgeVariant } {
+  if (dueState === 'OVERDUE') {
+    return { label: `${Math.abs(days)}d OVERDUE`, variant: 'danger' };
+  }
+  if (dueState === 'DUE') {
+    return { label: 'DUE TODAY', variant: 'warning' };
+  }
+  return { label: `Due in ${days}d`, variant: 'neutral' };
 }
 
 export default function RecurringListScreen() {
   const { colors, typography, spacing } = useTokens();
   const { recurringRules, reload } = useRecurringRules();
   const { recurringRules: ruleService, refresh } = useFinance();
+  const router = useRouter();
 
   const handleExecute = async (id: string) => {
     await ruleService.executeRule(id);
@@ -43,56 +50,95 @@ export default function RecurringListScreen() {
 
   return (
     <ScrollScreen>
-      <Text style={[typography.title, { color: colors.textPrimary }]}>Recurring</Text>
-      <Link href="/recurring/new" asChild>
-        <Button label="Add recurring" />
-      </Link>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ gap: 2 }}>
+          <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
+            SCHEDULED BILLS & SALARIES
+          </Text>
+          <Text style={[typography.title, { color: colors.textPrimary }]}>Recurring Rules</Text>
+        </View>
+        <Button label="+ New Rule" size="sm" onPress={() => router.push('/recurring/new')} />
+      </View>
+
+      {/* Rules List */}
       <View style={{ gap: spacing.md }}>
         {recurringRules.length === 0 ? (
-          <Card>
-            <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>No recurring rules yet</Text>
-            <Text style={{ color: colors.textSecondary }}>
-              Add expected bills, subscriptions, salary, or transfers.
-            </Text>
-          </Card>
-        ) : null}
-        {recurringRules.map(({ rule, daysUntilDue, dueState }) => {
-          const dueColor =
-            dueState === 'OVERDUE' ? colors.danger : dueState === 'DUE' ? colors.warning : colors.textSecondary;
-          const isPaused = rule.status === 'PAUSED';
-          return (
-            <Card key={rule.id} style={{ gap: spacing.sm }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>{rule.name}</Text>
-                  <Text style={{ color: colors.textSecondary }}>
-                    {rule.type} · {rule.frequency.toLowerCase()} · next {rule.nextOccurrence}
-                    {isPaused ? ' (Paused)' : ''}
-                  </Text>
+          <EmptyState
+            icon="🔁"
+            title="No recurring schedules"
+            description="Automate monthly utilities, internet bills, rent, gym subscriptions, or salary deposits."
+            actionLabel="Add Recurring Rule"
+            onAction={() => router.push('/recurring/new')}
+          />
+        ) : (
+          recurringRules.map(({ rule, daysUntilDue, dueState }) => {
+            const isPaused = rule.status === 'PAUSED';
+            const { label: dueLabel, variant: dueVariant } = getDueBadge(dueState, daysUntilDue);
+
+            return (
+              <Card key={rule.id} style={{ gap: spacing.md }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                      <Text
+                        style={[
+                          typography.sectionTitle,
+                          { color: colors.textPrimary, fontSize: 16 },
+                        ]}
+                      >
+                        {rule.name}
+                      </Text>
+                      {isPaused && <Badge label="PAUSED" variant="neutral" size="sm" />}
+                    </View>
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                      {rule.type} · {rule.frequency.toLowerCase()} · Next: {rule.nextOccurrence}
+                    </Text>
+                  </View>
+
+                  {!isPaused && <Badge label={dueLabel} variant={dueVariant} size="sm" />}
                 </View>
-                <Text style={[typography.caption, { color: dueColor }]}>{dueText(daysUntilDue)}</Text>
-              </View>
-              <Text style={[typography.body, { color: colors.textPrimary }]}>
-                {formatMoneyDisplay(rule.amount, rule.currency)}
-              </Text>
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.xs }}>
-                {!isPaused && (
-                  <Pressable onPress={() => void handleExecute(rule.id)}>
-                    <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Execute now</Text>
-                  </Pressable>
-                )}
-                <Pressable onPress={() => void handleTogglePause(rule.id, isPaused)}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{isPaused ? 'Resume' : 'Pause'}</Text>
-                </Pressable>
-                <Pressable onPress={() => void handleDelete(rule.id)}>
-                  <Text style={{ color: colors.danger, fontSize: 13 }}>Delete</Text>
-                </Pressable>
-              </View>
-            </Card>
-          );
-        })}
+
+                <Text
+                  style={[typography.numericMedium, { color: colors.textPrimary, fontSize: 18 }]}
+                >
+                  {formatMoneyDisplay(rule.amount, rule.currency)}
+                </Text>
+
+                {/* Actions */}
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm }}>
+                  {!isPaused && (
+                    <Button
+                      label="Execute Now"
+                      variant="outline"
+                      size="sm"
+                      onPress={() => void handleExecute(rule.id)}
+                    />
+                  )}
+                  <Button
+                    label={isPaused ? 'Resume' : 'Pause'}
+                    variant="secondary"
+                    size="sm"
+                    onPress={() => void handleTogglePause(rule.id, isPaused)}
+                  />
+                  <Button
+                    label="Delete"
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => void handleDelete(rule.id)}
+                  />
+                </View>
+              </Card>
+            );
+          })
+        )}
       </View>
     </ScrollScreen>
   );
 }
-

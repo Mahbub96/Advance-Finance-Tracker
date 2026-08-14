@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { getDatabase } from '../database/client';
 import { AccountRepository } from '../repositories/account-repository';
@@ -120,7 +113,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     };
   }, [db, nonce]);
 
-
   useEffect(() => {
     if (value) {
       void value.recurringRules.processDueRules(new Date(), true).then((res) => {
@@ -142,4 +134,3 @@ export function useFinance(): FinanceServices {
   }
   return ctx;
 }
-

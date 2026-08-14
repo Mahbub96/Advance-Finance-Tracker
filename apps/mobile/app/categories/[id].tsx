@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { Button } from '../../src/components/Button';
+import { Card } from '../../src/components/Card';
 import { Input } from '../../src/components/Input';
 import { ScrollScreen } from '../../src/components/Screen';
 import type { CategoryRecord } from '../../src/database/records';
@@ -12,10 +13,11 @@ export default function EditCategoryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { categories, refresh } = useFinance();
   const router = useRouter();
-  const { colors, typography } = useTokens();
+  const { colors, typography, spacing, radius } = useTokens();
   const [category, setCategory] = useState<CategoryRecord | null>(null);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -26,37 +28,88 @@ export default function EditCategoryScreen() {
   }, [categories, id]);
 
   if (!category) {
-    return <Text>Loading…</Text>;
+    return (
+      <ScrollScreen>
+        <Text style={{ color: colors.textSecondary }}>Loading category…</Text>
+      </ScrollScreen>
+    );
   }
+
+  const handleUpdate = async () => {
+    if (!name.trim()) {
+      setError('Please provide a category name');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await categories.update(category.id, { name: name.trim() });
+      refresh();
+      router.back();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not save');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleToggleArchive = async () => {
+    setBusy(true);
+    try {
+      if (category.isArchived) {
+        await categories.restore(category.id);
+      } else {
+        await categories.archive(category.id);
+      }
+      refresh();
+      router.back();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not update archive status');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <ScrollScreen>
-      <Text style={[typography.title, { color: colors.textPrimary }]}>Edit category</Text>
-      <Input label="Name" value={name} onChangeText={setName} />
-      {error ? <Text style={{ color: colors.danger }}>{error}</Text> : null}
+      <View style={{ gap: 2 }}>
+        <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
+          EDIT CATEGORY
+        </Text>
+        <Text style={[typography.title, { color: colors.textPrimary }]}>{category.name}</Text>
+      </View>
+
+      <Card style={{ gap: spacing.md, backgroundColor: colors.surfaceElevated }}>
+        <Input label="Category Name" value={name} onChangeText={setName} />
+        <Text style={[typography.caption, { color: colors.textSecondary }]}>
+          Type: {category.type} {category.isSystem ? '· System Default' : ''}
+        </Text>
+      </Card>
+
+      {error ? (
+        <View
+          style={{
+            backgroundColor: colors.dangerMuted,
+            padding: spacing.md,
+            borderRadius: radius.md,
+          }}
+        >
+          <Text style={{ color: colors.danger, fontSize: 13 }}>⚠️ {error}</Text>
+        </View>
+      ) : null}
+
       <Button
-        label="Save"
-        onPress={() => {
-          void categories
-            .update(category.id, { name })
-            .then(() => {
-              refresh();
-              router.back();
-            })
-            .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Could not save'));
-        }}
+        label={busy ? 'Saving...' : 'Save Changes'}
+        loading={busy}
+        onPress={() => void handleUpdate()}
+        size="lg"
       />
+
       <Button
-        label={category.isArchived ? 'Restore' : 'Archive'}
+        label={category.isArchived ? 'Restore Category' : 'Archive Category'}
         variant="secondary"
-        onPress={() => {
-          void (category.isArchived ? categories.restore(category.id) : categories.archive(category.id)).then(
-            () => {
-              refresh();
-              router.back();
-            },
-          );
-        }}
+        onPress={() => void handleToggleArchive()}
+        size="md"
       />
     </ScrollScreen>
   );

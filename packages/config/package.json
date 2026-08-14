@@ -2,7 +2,9 @@
   "name": "@personal-finance/config",
   "private": true,
   "version": "0.0.0",
-  "files": ["tsconfig.base.json"],
+  "files": [
+    "tsconfig.base.json"
+  ],
   "scripts": {
     "lint": "node -e \"process.exit(0)\"",
     "typecheck": "node -e \"process.exit(0)\"",

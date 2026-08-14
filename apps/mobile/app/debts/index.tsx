@@ -1,13 +1,19 @@
 import { formatMoneyDisplay, moneyString, parseMoney } from '@personal-finance/types';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
+import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { EmptyState } from '../../src/components/EmptyState';
 import { Input } from '../../src/components/Input';
+import { ProgressBar } from '../../src/components/ProgressBar';
 import { ScrollScreen } from '../../src/components/Screen';
+import { SectionHeader } from '../../src/components/SectionHeader';
+import { StatCard } from '../../src/components/StatCard';
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useDebts } from '../../src/hooks/use-debts';
+import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
 
@@ -16,11 +22,16 @@ export default function DebtsListScreen() {
   const { debts, reload } = useDebts();
   const { debts: debtService, refresh } = useFinance();
   const { accounts } = useAccounts();
+  const { settings } = useSettings();
+  const router = useRouter();
+
+  const currency = settings?.baseCurrency ?? 'BDT';
 
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [repayAmount, setRepayAmount] = useState('');
   const [repayAccountId, setRepayAccountId] = useState<string | null>(null);
   const [repayError, setRepayError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const totalLent = debts
     .filter((d) => d.debt.type === 'LENT')
@@ -32,6 +43,7 @@ export default function DebtsListScreen() {
 
   const handleRepay = async () => {
     if (!selectedDebtId || !repayAmount) return;
+    setBusy(true);
     try {
       await debtService.recordRepayment(selectedDebtId, {
         amount: repayAmount,
@@ -44,7 +56,9 @@ export default function DebtsListScreen() {
       refresh();
       await reload();
     } catch (err) {
-      setRepayError(err instanceof Error ? err.message : 'Repayment failed');
+      setRepayError(err instanceof Error ? err.message : 'Repayment recording failed');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -56,143 +70,190 @@ export default function DebtsListScreen() {
 
   return (
     <ScrollScreen>
-      <Text style={[typography.title, { color: colors.textPrimary }]}>Lending & Borrowing</Text>
-      
-      {/* Overview Totals */}
-      <View style={{ flexDirection: 'row', gap: spacing.md }}>
-        <Card style={{ flex: 1, backgroundColor: colors.surface }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>You Lent</Text>
-          <Text style={[typography.title, { color: colors.income, fontSize: 20 }]}>
-            {formatMoneyDisplay(totalLent, 'BDT')}
+      {/* Header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ gap: 2 }}>
+          <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
+            LIABILITIES & RECEIVABLES
           </Text>
-        </Card>
-        <Card style={{ flex: 1, backgroundColor: colors.surface }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>You Owe</Text>
-          <Text style={[typography.title, { color: colors.danger, fontSize: 20 }]}>
-            {formatMoneyDisplay(totalBorrowed, 'BDT')}
-          </Text>
-        </Card>
+          <Text style={[typography.title, { color: colors.textPrimary }]}>Lending & Debts</Text>
+        </View>
+        <Button label="+ Record Loan" size="sm" onPress={() => router.push('/debts/new')} />
       </View>
 
-      <Link href="/debts/new" asChild>
-        <Button label="Add loan / borrowing" />
-      </Link>
+      {/* Overview Totals Cards */}
+      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+        <StatCard
+          label="You Lent"
+          value={formatMoneyDisplay(totalLent, currency)}
+          indicatorColor={colors.income}
+          icon="🤝"
+        />
+        <StatCard
+          label="You Owe"
+          value={formatMoneyDisplay(totalBorrowed, currency)}
+          indicatorColor={colors.danger}
+          icon="⏳"
+        />
+      </View>
 
+      {/* Debts List */}
       <View style={{ gap: spacing.md }}>
         {debts.length === 0 ? (
-          <Card>
-            <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>No active records</Text>
-            <Text style={{ color: colors.textSecondary }}>
-              Track money you lent to friends or borrowed from others.
-            </Text>
-          </Card>
-        ) : null}
+          <EmptyState
+            icon="🤝"
+            title="No active loan records"
+            description="Track money you lent to friends or colleagues, or personal money borrowed."
+            actionLabel="Add Loan Record"
+            onAction={() => router.push('/debts/new')}
+          />
+        ) : (
+          debts.map(({ debt, totalRepaid, remainingAmount, progressPercent, isOverdue }) => {
+            const isLent = debt.type === 'LENT';
+            const typeColor = isLent ? colors.income : colors.danger;
 
-        {debts.map(({ debt, totalRepaid, remainingAmount, progressPercent, isOverdue }) => {
-          const isLent = debt.type === 'LENT';
-          const typeColor = isLent ? colors.income : colors.danger;
-          return (
-            <Card key={debt.id} style={{ gap: spacing.sm }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>
-                    {debt.personName}
-                  </Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                    {isLent ? 'Lent to' : 'Borrowed from'} · {debt.issueDate}
-                    {debt.dueDate ? ` · Due ${debt.dueDate}` : ''}
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={[typography.caption, { color: typeColor, fontWeight: '700' }]}>
-                    {isLent ? 'LENT' : 'BORROWED'}
-                  </Text>
-                  {isOverdue && (
-                    <Text style={[typography.caption, { color: colors.danger, fontWeight: '600' }]}>
-                      Overdue
-                    </Text>
-                  )}
-                </View>
-              </View>
-
-              {/* Progress bar */}
-              <View style={{ height: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceMuted }}>
+            return (
+              <Card key={debt.id} style={{ gap: spacing.md }}>
                 <View
                   style={{
-                    width: `${Math.min(100, progressPercent)}%`,
-                    height: 6,
-                    borderRadius: radius.pill,
-                    backgroundColor: typeColor,
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
                   }}
-                />
-              </View>
+                >
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text
+                      style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 16 }]}
+                    >
+                      {debt.personName}
+                    </Text>
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                      {isLent ? 'Lent out on' : 'Borrowed on'} {debt.issueDate}
+                      {debt.dueDate ? ` · Due ${debt.dueDate}` : ''}
+                    </Text>
+                  </View>
 
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                  Repaid {formatMoneyDisplay(totalRepaid, debt.currency)} ({progressPercent}%)
-                </Text>
-                <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-                  Remaining {formatMoneyDisplay(remainingAmount, debt.currency)}
-                </Text>
-              </View>
+                  <View style={{ flexDirection: 'row', gap: spacing.xs, alignItems: 'center' }}>
+                    <Badge
+                      label={isLent ? 'LENT' : 'BORROWED'}
+                      variant={isLent ? 'success' : 'danger'}
+                      size="sm"
+                    />
+                    {isOverdue && <Badge label="OVERDUE" variant="danger" size="sm" dot />}
+                  </View>
+                </View>
 
-              {/* Action row */}
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md, marginTop: spacing.xs }}>
-                <Pressable onPress={() => {
-                  setSelectedDebtId(debt.id);
-                  setRepayAmount(remainingAmount);
-                }}>
-                  <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
-                    Record repayment
+                {/* Progress bar */}
+                <ProgressBar progressPercent={progressPercent} color={typeColor} height={8} />
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                    Repaid {formatMoneyDisplay(totalRepaid, debt.currency)} ({progressPercent}%)
                   </Text>
-                </Pressable>
-                <Pressable onPress={() => void handleDelete(debt.id)}>
-                  <Text style={{ color: colors.danger, fontSize: 13 }}>Delete</Text>
-                </Pressable>
-              </View>
-            </Card>
-          );
-        })}
+                  <Text style={[typography.captionMedium, { color: colors.textPrimary }]}>
+                    Remaining {formatMoneyDisplay(remainingAmount, debt.currency)}
+                  </Text>
+                </View>
+
+                {/* Action row */}
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md }}>
+                  <Button
+                    label="Repay"
+                    variant="outline"
+                    size="sm"
+                    onPress={() => {
+                      setSelectedDebtId(debt.id);
+                      setRepayAmount(remainingAmount);
+                    }}
+                  />
+                  <Button
+                    label="Delete"
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => void handleDelete(debt.id)}
+                  />
+                </View>
+              </Card>
+            );
+          })
+        )}
       </View>
 
       {/* Repayment Modal */}
       {selectedDebtId ? (
         <Modal transparent animationType="fade" visible={!!selectedDebtId}>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: spacing.lg }}>
-            <Card style={{ gap: spacing.md }}>
-              <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>Record Repayment</Text>
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              justifyContent: 'center',
+              padding: spacing.lg,
+            }}
+          >
+            <Card style={{ gap: spacing.md, backgroundColor: colors.surfaceElevated }}>
+              <SectionHeader title="Record Repayment" />
               <Input
                 label="Repayment Amount"
                 value={repayAmount}
                 onChangeText={setRepayAmount}
                 keyboardType="decimal-pad"
+                prefix={currency}
               />
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Settlement Account (Optional):</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-                {accounts.map((acc) => (
-                  <Pressable
-                    key={acc.id}
-                    onPress={() => setRepayAccountId(repayAccountId === acc.id ? null : acc.id)}
-                    style={{
-                      paddingVertical: spacing.xs,
-                      paddingHorizontal: spacing.sm,
-                      borderRadius: radius.sm,
-                      backgroundColor: repayAccountId === acc.id ? colors.primary : colors.surfaceMuted,
-                    }}
-                  >
-                    <Text style={{ color: repayAccountId === acc.id ? colors.primaryForeground : colors.textPrimary, fontSize: 12 }}>
-                      {acc.name}
-                    </Text>
-                  </Pressable>
-                ))}
+
+              <View style={{ gap: spacing.xs }}>
+                <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
+                  Settlement Account (Optional)
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
+                  {accounts.map((acc) => (
+                    <Pressable
+                      key={acc.id}
+                      onPress={() => setRepayAccountId(repayAccountId === acc.id ? null : acc.id)}
+                      style={{
+                        paddingVertical: 6,
+                        paddingHorizontal: spacing.sm,
+                        borderRadius: radius.sm,
+                        borderWidth: 1,
+                        borderColor: repayAccountId === acc.id ? colors.primary : colors.border,
+                        backgroundColor:
+                          repayAccountId === acc.id ? colors.primary : colors.surfaceMuted,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color:
+                            repayAccountId === acc.id
+                              ? colors.primaryForeground
+                              : colors.textPrimary,
+                          fontSize: 12,
+                          fontWeight: repayAccountId === acc.id ? '600' : '400',
+                        }}
+                      >
+                        {acc.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
-              {repayError ? <Text style={{ color: colors.danger }}>{repayError}</Text> : null}
+
+              {repayError ? (
+                <Text style={{ color: colors.danger, fontSize: 13 }}>⚠️ {repayError}</Text>
+              ) : null}
+
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 <View style={{ flex: 1 }}>
-                  <Button label="Cancel" variant="secondary" onPress={() => setSelectedDebtId(null)} />
+                  <Button
+                    label="Cancel"
+                    variant="secondary"
+                    onPress={() => setSelectedDebtId(null)}
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Button label="Confirm" onPress={() => void handleRepay()} />
+                  <Button
+                    label={busy ? 'Saving...' : 'Confirm'}
+                    loading={busy}
+                    onPress={() => void handleRepay()}
+                  />
                 </View>
               </View>
             </Card>

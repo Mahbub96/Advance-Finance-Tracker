@@ -41,12 +41,12 @@ export default function EditAccountScreen() {
           label={account.isArchived ? 'Restore' : 'Archive'}
           variant="secondary"
           onPress={() => {
-            void (account.isArchived ? accounts.restore(account.id) : accounts.archive(account.id)).then(
-              () => {
-                refresh();
-                router.back();
-              },
-            );
+            void (
+              account.isArchived ? accounts.restore(account.id) : accounts.archive(account.id)
+            ).then(() => {
+              refresh();
+              router.back();
+            });
           }}
         />
       }

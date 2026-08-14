@@ -33,9 +33,7 @@ export class SettingsRepository {
   constructor(private readonly db: SQLiteDatabase) {}
 
   async get(): Promise<SettingsRecord | null> {
-    const row = await this.db.getFirstAsync<SettingsRow>(
-      'SELECT * FROM user_settings LIMIT 1',
-    );
+    const row = await this.db.getFirstAsync<SettingsRow>('SELECT * FROM user_settings LIMIT 1');
     return row ? mapSettings(row) : null;
   }
 

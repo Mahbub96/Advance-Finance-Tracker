@@ -1,9 +1,14 @@
 import { formatMoneyDisplay } from '@personal-finance/types';
 import { useEffect, useState } from 'react';
 import { Alert, Share, Text, View } from 'react-native';
+import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { EmptyState } from '../../src/components/EmptyState';
+import { ProgressBar } from '../../src/components/ProgressBar';
 import { ScrollScreen } from '../../src/components/Screen';
+import { SectionHeader } from '../../src/components/SectionHeader';
+import { StatCard } from '../../src/components/StatCard';
 import type { CategoryBreakdownItem } from '../../src/features/analytics/services/analytics-service';
 import { useSettings } from '../../src/hooks/use-settings';
 import { monthRange } from '../../src/lib/clock';
@@ -11,7 +16,7 @@ import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
 
 export default function AnalyticsScreen() {
-  const { colors, typography, spacing, radius } = useTokens();
+  const { colors, typography, spacing } = useTokens();
   const { analytics, nonce } = useFinance();
   const { settings } = useSettings();
   const currency = settings?.baseCurrency ?? 'BDT';
@@ -47,91 +52,142 @@ export default function AnalyticsScreen() {
     }
   };
 
+  const isNetPositive = parseFloat(cashFlow.netSavings) >= 0;
+
   return (
     <ScrollScreen>
-      <Text style={[typography.title, { color: colors.textPrimary }]}>Financial Reports</Text>
-      
-      {/* Cash Flow Summary */}
-      <Card style={{ gap: spacing.md }}>
-        <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>This Month Cash Flow</Text>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <View>
-            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Income</Text>
-            <Text style={[typography.title, { color: colors.income, fontSize: 20 }]}>
-              {formatMoneyDisplay(cashFlow.totalIncome, currency)}
+      {/* Header */}
+      <View style={{ gap: 2 }}>
+        <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
+          PERFORMANCE & REPORTS
+        </Text>
+        <Text style={[typography.title, { color: colors.textPrimary }]}>Financial Reports</Text>
+      </View>
+
+      {/* 1. Cash Flow Metric Cards */}
+      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+        <StatCard
+          label="Income"
+          value={formatMoneyDisplay(cashFlow.totalIncome, currency)}
+          indicatorColor={colors.income}
+          icon="📈"
+        />
+        <StatCard
+          label="Expenses"
+          value={formatMoneyDisplay(cashFlow.totalExpenses, currency)}
+          indicatorColor={colors.expense}
+          icon="💸"
+        />
+      </View>
+
+      {/* 2. Net Savings & Savings Rate Card */}
+      <Card style={{ gap: spacing.md, backgroundColor: colors.surfaceElevated }}>
+        <View
+          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+        >
+          <View style={{ gap: 2 }}>
+            <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
+              Net Month Savings
             </Text>
-          </View>
-          <View>
-            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Expenses</Text>
-            <Text style={[typography.title, { color: colors.expense, fontSize: 20 }]}>
-              {formatMoneyDisplay(cashFlow.totalExpenses, currency)}
-            </Text>
-          </View>
-          <View>
-            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Net Saved</Text>
-            <Text style={[typography.title, { color: colors.textPrimary, fontSize: 20 }]}>
+            <Text
+              style={[
+                typography.numericLarge,
+                { color: isNetPositive ? colors.income : colors.danger, fontSize: 26 },
+              ]}
+            >
               {formatMoneyDisplay(cashFlow.netSavings, currency)}
             </Text>
           </View>
+          <Badge
+            label={`${cashFlow.savingsRatePercent}% RATE`}
+            variant={cashFlow.savingsRatePercent >= 20 ? 'success' : 'warning'}
+          />
         </View>
 
-        {/* Savings Rate Meter */}
-        <View style={{ gap: spacing.xs, marginTop: spacing.xs }}>
+        {/* Savings Rate Progress Meter */}
+        <View style={{ gap: spacing.xs }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Savings Rate</Text>
-            <Text style={{ color: colors.income, fontWeight: '700', fontSize: 13 }}>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              Savings Goal Pace (Benchmark: 20%)
+            </Text>
+            <Text style={[typography.captionMedium, { color: colors.textPrimary }]}>
               {cashFlow.savingsRatePercent}%
             </Text>
           </View>
-          <View style={{ height: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceMuted }}>
-            <View
-              style={{
-                width: `${Math.min(100, cashFlow.savingsRatePercent)}%`,
-                height: 8,
-                borderRadius: radius.pill,
-                backgroundColor: colors.income,
-              }}
-            />
-          </View>
+          <ProgressBar
+            progressPercent={cashFlow.savingsRatePercent}
+            color={cashFlow.savingsRatePercent >= 20 ? colors.income : colors.warning}
+            height={8}
+          />
         </View>
       </Card>
 
-      {/* Category Breakdown */}
-      <Card style={{ gap: spacing.sm }}>
-        <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>Spending by Category</Text>
-        {categories.length === 0 ? (
-          <Text style={{ color: colors.textSecondary }}>No recorded expenses for this period.</Text>
-        ) : null}
-        {categories.map((cat) => (
-          <View key={cat.categoryId ?? 'uncategorized'} style={{ gap: spacing.xs, marginVertical: spacing.xs }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{cat.categoryName}</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                {formatMoneyDisplay(cat.totalSpent, currency)} ({cat.percentageOfExpenses}%)
-              </Text>
-            </View>
-            <View style={{ height: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceMuted }}>
-              <View
-                style={{
-                  width: `${Math.min(100, cat.percentageOfExpenses)}%`,
-                  height: 6,
-                  borderRadius: radius.pill,
-                  backgroundColor: colors.primary,
-                }}
-              />
-            </View>
-          </View>
-        ))}
-      </Card>
+      {/* 3. Category Spending Breakdown */}
+      <View style={{ gap: spacing.md }}>
+        <SectionHeader
+          title="Spending by Category"
+          badge={categories.length ? `${categories.length} categories` : undefined}
+        />
 
-      {/* Data Export & Backup */}
-      <Card style={{ gap: spacing.sm }}>
-        <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>Backup & Data Export</Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-          Export your complete financial records (accounts, transactions, debts, goals, and budgets) as JSON.
+        {categories.length === 0 ? (
+          <EmptyState
+            icon="📊"
+            title="No expense data yet"
+            description="Expense transactions will appear categorized here with distribution percentages."
+          />
+        ) : (
+          <Card style={{ gap: spacing.md }}>
+            {categories.map((cat, idx) => (
+              <View key={cat.categoryId ?? `uncat-${idx}`} style={{ gap: spacing.xs }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                    <Text style={{ fontSize: 13, color: colors.textTertiary, fontWeight: '700' }}>
+                      #{idx + 1}
+                    </Text>
+                    <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>
+                      {cat.categoryName}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                    <Text
+                      style={[
+                        typography.numericMedium,
+                        { color: colors.textPrimary, fontSize: 14 },
+                      ]}
+                    >
+                      {formatMoneyDisplay(cat.totalSpent, currency)}
+                    </Text>
+                    <Badge label={`${cat.percentageOfExpenses}%`} size="sm" variant="neutral" />
+                  </View>
+                </View>
+                <ProgressBar
+                  progressPercent={cat.percentageOfExpenses}
+                  color={idx === 0 ? colors.primary : colors.accentPurple}
+                  height={6}
+                />
+              </View>
+            ))}
+          </Card>
+        )}
+      </View>
+
+      {/* 4. Local Backup & JSON Export */}
+      <Card style={{ gap: spacing.sm, backgroundColor: colors.surfaceSubtle }}>
+        <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>
+          Backup & Data Export
+        </Text>
+        <Text style={[typography.caption, { color: colors.textSecondary }]}>
+          Export your complete local financial records (accounts, transactions, debts, goals, and
+          budgets) as an encrypted offline JSON backup.
         </Text>
         <Button
-          label={exporting ? 'Exporting...' : 'Export Local Backup (JSON)'}
+          label={exporting ? 'Exporting JSON...' : 'Export Local Backup'}
           variant="secondary"
           onPress={() => void handleExport()}
         />
@@ -139,4 +195,3 @@ export default function AnalyticsScreen() {
     </ScrollScreen>
   );
 }
-

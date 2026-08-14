@@ -45,9 +45,6 @@ Phase 6 — Cloud                    Not started
 Phase 7 — Public Release           Not started
 ```
 
-
-
-
 Release 1 of Phase 3 (local-first financial foundation) is implemented:
 
 ```text
@@ -130,7 +127,6 @@ Accounts · Categories · Transactions · Transfers · Budgets · Recurring Tran
 - [x] Budgets (all-expenses & subcategory aggregation)
 - [x] Recurring transactions (execution engine, auto-process on load, pause/resume/delete)
 
-
 ---
 
 # 8. Phase 4 — Advanced Finance (Done)
@@ -140,7 +136,6 @@ Accounts · Categories · Transactions · Transfers · Budgets · Recurring Tran
 - [x] Reports & Analytics (cash flow, savings rate meter, category breakdown)
 - [x] Data Export (local JSON backup export)
 
-
 ---
 
 # 9. Phase 5 — Intelligence (Done)
@@ -149,7 +144,6 @@ Accounts · Categories · Transactions · Transfers · Budgets · Recurring Tran
 - [x] Financial health (multi-pillar scoring, positive/attention drivers)
 - [x] AI insights & recommendations (contextual alerts, milestone achievements, upcoming due bills)
 - [x] Intelligence Hub UI & Home widget integration
-
 
 ---
 

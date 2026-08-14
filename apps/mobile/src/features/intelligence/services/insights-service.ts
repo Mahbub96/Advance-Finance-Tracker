@@ -1,7 +1,4 @@
-import {
-  InsightType,
-  type InsightType as InsightTypeEnum,
-} from '@personal-finance/types';
+import { InsightType, type InsightType as InsightTypeEnum } from '@personal-finance/types';
 import type { DebtService } from '../../debts/services/debt-service';
 import type { GoalService } from '../../goals/services/goal-service';
 import type { RecurringRuleService } from '../../recurring/services/recurring-rule-service';
@@ -63,7 +60,10 @@ export class InsightsService {
 
     // 2. Upcoming Recurring Bills
     const dueRecurring = recurringSummaries.filter(
-      (r) => r.dueState === 'DUE' || r.dueState === 'OVERDUE' || (r.daysUntilDue <= 3 && r.daysUntilDue >= 0),
+      (r) =>
+        r.dueState === 'DUE' ||
+        r.dueState === 'OVERDUE' ||
+        (r.daysUntilDue <= 3 && r.daysUntilDue >= 0),
     );
     for (const rule of dueRecurring) {
       insights.push({

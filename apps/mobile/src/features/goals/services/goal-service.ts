@@ -78,7 +78,11 @@ export class GoalService {
           ? 100
           : Math.min(
               100,
-              parseMoney(savedAmount).div(parseMoney(goal.targetAmount)).times(100).round().toNumber(),
+              parseMoney(savedAmount)
+                .div(parseMoney(goal.targetAmount))
+                .times(100)
+                .round()
+                .toNumber(),
             );
 
         const isCompleted = parseMoney(savedAmount).gte(parseMoney(goal.targetAmount));
@@ -89,11 +93,8 @@ export class GoalService {
           const diffMs = new Date(goal.targetDate).getTime() - new Date(todayStr).getTime();
           const days = Math.max(1, Math.round(diffMs / 86_400_000));
           monthsRemaining = Math.max(1, Math.ceil(days / 30));
-          requiredMonthlySavings = moneyString(
-            parseMoney(remainingAmount).div(monthsRemaining),
-          );
+          requiredMonthlySavings = moneyString(parseMoney(remainingAmount).div(monthsRemaining));
         }
-
 
         return {
           goal,

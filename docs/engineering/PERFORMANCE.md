@@ -12,7 +12,7 @@
 **Database:** PostgreSQL + Prisma  
 **Local Database:** SQLite  
 **Cache / Queue:** Redis  
-**Package Manager:** pnpm  
+**Package Manager:** pnpm
 
 ---
 
@@ -41,7 +41,7 @@ Monitoring
 Acceptance criteria
 ```
 
-Testing *how* to measure belongs in `TESTING.md`.
+Testing _how_ to measure belongs in `TESTING.md`.
 
 How to ship belongs in `DEPLOYMENT.md`.
 
@@ -1228,7 +1228,7 @@ forecast_period
 
 Regenerate when material inputs or model version change.
 
-A more expensive model must not become default unless it beats the baseline on accuracy *and* stays within latency budget (`DEC-019`).
+A more expensive model must not become default unless it beats the baseline on accuracy _and_ stays within latency budget (`DEC-019`).
 
 ---
 

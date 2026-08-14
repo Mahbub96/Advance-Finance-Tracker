@@ -100,8 +100,9 @@ export class RecurringRuleService {
       amount: assertPositiveAmount(input.amount),
       currency: input.currency || account.currency,
       accountId: account.id,
-      destinationAccountId: input.type === TransactionType.TRANSFER ? input.destinationAccountId ?? null : null,
-      categoryId: input.type === TransactionType.TRANSFER ? null : input.categoryId ?? null,
+      destinationAccountId:
+        input.type === TransactionType.TRANSFER ? (input.destinationAccountId ?? null) : null,
+      categoryId: input.type === TransactionType.TRANSFER ? null : (input.categoryId ?? null),
       frequency: input.frequency,
       intervalValue,
       startDate: input.startDate,
@@ -243,7 +244,6 @@ export class RecurringRuleService {
     return next;
   }
 }
-
 
 export function nextDate(
   from: string,

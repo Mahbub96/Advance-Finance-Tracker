@@ -49,34 +49,34 @@ Deprecated
 
 # 3. Decision Index
 
-| ID | Decision | Status |
-| -- | -------- | ------ |
-| DEC-001 | React Native + Expo | Accepted |
-| DEC-002 | NestJS Backend | Accepted |
-| DEC-003 | PostgreSQL as Primary Cloud Database | Accepted |
-| DEC-004 | Prisma ORM | Accepted |
-| DEC-005 | SQLite for Mobile Local Storage | Accepted |
-| DEC-006 | Offline-First Mobile Architecture | Accepted |
-| DEC-007 | PostgreSQL Is the Cloud Source of Truth | Accepted |
-| DEC-008 | Transactions Are the Core Financial Ledger | Accepted |
-| DEC-009 | Transfers Are Not Income or Expense | Accepted |
-| DEC-010 | Financial Values Must Use Decimal-Safe Representation | Accepted |
-| DEC-011 | AI Is Not the Source of Financial Truth | Accepted |
-| DEC-012 | AI Provider Must Be Replaceable | Accepted |
-| DEC-013 | AI Write Operations Require User Confirmation | Accepted |
+| ID      | Decision                                                 | Status   |
+| ------- | -------------------------------------------------------- | -------- |
+| DEC-001 | React Native + Expo                                      | Accepted |
+| DEC-002 | NestJS Backend                                           | Accepted |
+| DEC-003 | PostgreSQL as Primary Cloud Database                     | Accepted |
+| DEC-004 | Prisma ORM                                               | Accepted |
+| DEC-005 | SQLite for Mobile Local Storage                          | Accepted |
+| DEC-006 | Offline-First Mobile Architecture                        | Accepted |
+| DEC-007 | PostgreSQL Is the Cloud Source of Truth                  | Accepted |
+| DEC-008 | Transactions Are the Core Financial Ledger               | Accepted |
+| DEC-009 | Transfers Are Not Income or Expense                      | Accepted |
+| DEC-010 | Financial Values Must Use Decimal-Safe Representation    | Accepted |
+| DEC-011 | AI Is Not the Source of Financial Truth                  | Accepted |
+| DEC-012 | AI Provider Must Be Replaceable                          | Accepted |
+| DEC-013 | AI Write Operations Require User Confirmation            | Accepted |
 | DEC-014 | Product Documentation Is the Engineering Source of Truth | Accepted |
-| DEC-015 | Living Logs Remain Lightweight | Accepted |
-| DEC-016 | Product Modules Are Domain-Oriented | Accepted |
-| DEC-017 | Reports and Analytics Must Be Explainable | Accepted |
-| DEC-018 | Forecasts Must Be Clearly Distinguished From Actuals | Accepted |
-| DEC-019 | Use the Simplest Forecast Model That Works | Accepted |
-| DEC-020 | File Storage Uses Object Storage | Accepted |
-| DEC-021 | Financial Files Are Private by Default | Accepted |
-| DEC-022 | Notifications Are Event-Driven | Accepted |
-| DEC-023 | Background Jobs Must Be Idempotent | Accepted |
-| DEC-024 | Core Financial Features Must Not Depend on AI | Accepted |
-| DEC-025 | Production Deployments Must Be Reproducible | Accepted |
-| DEC-026 | Database Migrations Must Be Controlled | Accepted |
+| DEC-015 | Living Logs Remain Lightweight                           | Accepted |
+| DEC-016 | Product Modules Are Domain-Oriented                      | Accepted |
+| DEC-017 | Reports and Analytics Must Be Explainable                | Accepted |
+| DEC-018 | Forecasts Must Be Clearly Distinguished From Actuals     | Accepted |
+| DEC-019 | Use the Simplest Forecast Model That Works               | Accepted |
+| DEC-020 | File Storage Uses Object Storage                         | Accepted |
+| DEC-021 | Financial Files Are Private by Default                   | Accepted |
+| DEC-022 | Notifications Are Event-Driven                           | Accepted |
+| DEC-023 | Background Jobs Must Be Idempotent                       | Accepted |
+| DEC-024 | Core Financial Features Must Not Depend on AI            | Accepted |
+| DEC-025 | Production Deployments Must Be Reproducible              | Accepted |
+| DEC-026 | Database Migrations Must Be Controlled                   | Accepted |
 
 ---
 

@@ -1790,7 +1790,7 @@ Production CORS should allow only approved origins.
 
 Do not deploy:
 
-*
+-
 
 for credentialed browser contexts.
 

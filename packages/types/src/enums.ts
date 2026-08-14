@@ -81,8 +81,7 @@ export const RecurringRuleStatus = {
   ARCHIVED: 'ARCHIVED',
 } as const;
 
-export type RecurringRuleStatus =
-  (typeof RecurringRuleStatus)[keyof typeof RecurringRuleStatus];
+export type RecurringRuleStatus = (typeof RecurringRuleStatus)[keyof typeof RecurringRuleStatus];
 
 export const DebtType = {
   LENT: 'LENT',
@@ -138,5 +137,3 @@ export const DEBT_STATUSES = Object.values(DebtStatus);
 export const GOAL_STATUSES = Object.values(GoalStatus);
 export const INSIGHT_TYPES = Object.values(InsightType);
 export const HEALTH_RATINGS = Object.values(HealthRating);
-
-

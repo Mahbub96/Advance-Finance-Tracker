@@ -17,9 +17,7 @@ describe('HealthService', () => {
     };
 
     const mockBudgets = {
-      summaries: jest.fn().mockResolvedValue([
-        { risk: 'ON_TRACK', spentAmount: '5000.00' },
-      ]),
+      summaries: jest.fn().mockResolvedValue([{ risk: 'ON_TRACK', spentAmount: '5000.00' }]),
     };
 
     const mockDebts = {
@@ -27,9 +25,9 @@ describe('HealthService', () => {
     };
 
     const mockGoals = {
-      summaries: jest.fn().mockResolvedValue([
-        { isCompleted: false, contributions: [{ id: 'c-1' }] },
-      ]),
+      summaries: jest
+        .fn()
+        .mockResolvedValue([{ isCompleted: false, contributions: [{ id: 'c-1' }] }]),
     };
 
     const service = new HealthService(

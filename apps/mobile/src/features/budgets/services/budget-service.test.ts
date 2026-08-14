@@ -83,7 +83,12 @@ function category(
   };
 }
 
-function expense(id: string, categoryId: string, amount: string, date = '2026-08-10'): TransactionRecord {
+function expense(
+  id: string,
+  categoryId: string,
+  amount: string,
+  date = '2026-08-10',
+): TransactionRecord {
   return {
     id,
     type: TransactionType.EXPENSE,
@@ -190,4 +195,3 @@ describe('BudgetService', () => {
     ).rejects.toThrow(/expense category/);
   });
 });
-

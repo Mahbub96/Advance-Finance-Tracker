@@ -18,10 +18,7 @@ export type BalanceTransaction = {
   deletedAt?: string | null;
 };
 
-export function transactionEffectOnAccount(
-  tx: BalanceTransaction,
-  accountId: string,
-): Decimal {
+export function transactionEffectOnAccount(tx: BalanceTransaction, accountId: string): Decimal {
   if (tx.deletedAt) {
     return new Decimal(0);
   }
@@ -40,9 +37,7 @@ export function transactionEffectOnAccount(
     case TransactionType.TRANSFER:
       return tx.transferLeg === TransferLeg.IN ? amount : amount.negated();
     case TransactionType.ADJUSTMENT:
-      return tx.adjustmentDirection === AdjustmentDirection.INCREASE
-        ? amount
-        : amount.negated();
+      return tx.adjustmentDirection === AdjustmentDirection.INCREASE ? amount : amount.negated();
     default: {
       const _exhaustive: never = tx.type;
       return _exhaustive;

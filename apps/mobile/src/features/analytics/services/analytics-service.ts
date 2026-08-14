@@ -97,10 +97,7 @@ export class AnalyticsService {
     const categoryMap = new Map<string | null, string>();
     for (const tx of expenseTransactions) {
       const current = categoryMap.get(tx.categoryId) ?? '0.00';
-      categoryMap.set(
-        tx.categoryId,
-        moneyString(parseMoney(current).plus(parseMoney(tx.amount))),
-      );
+      categoryMap.set(tx.categoryId, moneyString(parseMoney(current).plus(parseMoney(tx.amount))));
     }
 
     const result: CategoryBreakdownItem[] = [];
@@ -122,17 +119,7 @@ export class AnalyticsService {
   }
 
   async exportAllData(): Promise<FullExportData> {
-    const [
-      accs,
-      cats,
-      txs,
-      bgs,
-      rules,
-      dbs,
-      reps,
-      gls,
-      conts,
-    ] = await Promise.all([
+    const [accs, cats, txs, bgs, rules, dbs, reps, gls, conts] = await Promise.all([
       this.accounts.list(true),
       this.categories.list(true),
       this.transactions.list(100000),

@@ -159,4 +159,3 @@ export type GoalContributionRecord = {
   updatedAt: string;
   deletedAt: string | null;
 };
-

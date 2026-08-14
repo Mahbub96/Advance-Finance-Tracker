@@ -1665,7 +1665,7 @@ Screens should consume tokens.
 Avoid:
 
 ```ts
-color: "#123456";
+color: '#123456';
 marginTop: 17;
 borderRadius: 13;
 ```

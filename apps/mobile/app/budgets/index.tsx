@@ -1,23 +1,27 @@
 import { formatMoneyDisplay } from '@personal-finance/types';
-import { Link } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Text, View } from 'react-native';
+import { Badge, type BadgeVariant } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { EmptyState } from '../../src/components/EmptyState';
+import { ProgressBar } from '../../src/components/ProgressBar';
 import { ScrollScreen } from '../../src/components/Screen';
 import { useBudgets } from '../../src/hooks/use-budgets';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
 
-function riskLabel(risk: string): string {
-  if (risk === 'EXCEEDED') return 'Exceeded';
-  if (risk === 'ATTENTION') return 'Attention';
-  return 'On track';
+function getRiskBadge(risk: string): { label: string; variant: BadgeVariant } {
+  if (risk === 'EXCEEDED') return { label: 'Exceeded', variant: 'danger' };
+  if (risk === 'ATTENTION') return { label: 'High Risk', variant: 'warning' };
+  return { label: 'On Track', variant: 'success' };
 }
 
 export default function BudgetsListScreen() {
-  const { colors, typography, spacing, radius } = useTokens();
+  const { colors, typography, spacing } = useTokens();
   const { budgets, reload } = useBudgets();
   const { budgets: budgetService, refresh } = useFinance();
+  const router = useRouter();
 
   const handleArchive = async (id: string) => {
     await budgetService.archive(id);
@@ -33,64 +37,112 @@ export default function BudgetsListScreen() {
 
   return (
     <ScrollScreen>
-      <Text style={[typography.title, { color: colors.textPrimary }]}>Budgets</Text>
-      <Link href="/budgets/new" asChild>
-        <Button label="Add budget" />
-      </Link>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ gap: 2 }}>
+          <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
+            SPENDING LIMITS
+          </Text>
+          <Text style={[typography.title, { color: colors.textPrimary }]}>Budgets</Text>
+        </View>
+        <Button label="+ New Budget" size="sm" onPress={() => router.push('/budgets/new')} />
+      </View>
+
+      {/* Budget List */}
       <View style={{ gap: spacing.md }}>
         {budgets.length === 0 ? (
-          <Card>
-            <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>No budgets yet</Text>
-            <Text style={{ color: colors.textSecondary }}>
-              Create a monthly limit to compare planned and actual spending.
-            </Text>
-          </Card>
-        ) : null}
-        {budgets.map(({ budget, category, spent, remaining, utilizationPercent, risk }) => {
-          const riskColor =
-            risk === 'EXCEEDED' ? colors.danger : risk === 'ATTENTION' ? colors.warning : colors.income;
-          return (
-            <Card key={budget.id} style={{ gap: spacing.sm }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>{budget.name}</Text>
-                  <Text style={{ color: colors.textSecondary }}>
-                    {category?.name ?? 'All expenses'} · {budget.startDate} to {budget.endDate}
-                  </Text>
-                </View>
-                <Text style={[typography.caption, { color: riskColor }]}>{riskLabel(risk)}</Text>
-              </View>
-              <View style={{ height: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceMuted }}>
+          <EmptyState
+            icon="🎯"
+            title="No budgets configured"
+            description="Create monthly limits to stay in control of dining, shopping, or overall expenses."
+            actionLabel="Add First Budget"
+            onAction={() => router.push('/budgets/new')}
+          />
+        ) : (
+          budgets.map(({ budget, category, spent, remaining, utilizationPercent, risk }) => {
+            const { label, variant } = getRiskBadge(risk);
+            const isExceeded = risk === 'EXCEEDED';
+            const barColor =
+              risk === 'EXCEEDED'
+                ? colors.danger
+                : risk === 'ATTENTION'
+                  ? colors.warning
+                  : colors.income;
+
+            return (
+              <Card key={budget.id} style={{ gap: spacing.md }}>
                 <View
                   style={{
-                    width: `${Math.min(100, utilizationPercent)}%`,
-                    height: 8,
-                    borderRadius: radius.pill,
-                    backgroundColor: riskColor,
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
                   }}
-                />
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ color: colors.textSecondary }}>
-                  Spent {formatMoneyDisplay(spent, budget.currency)}
-                </Text>
-                <Text style={{ color: colors.textPrimary }}>
-                  Left {formatMoneyDisplay(remaining, budget.currency)}
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.xs }}>
-                <Pressable onPress={() => void handleArchive(budget.id)}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Archive</Text>
-                </Pressable>
-                <Pressable onPress={() => void handleDelete(budget.id)}>
-                  <Text style={{ color: colors.danger, fontSize: 13 }}>Delete</Text>
-                </Pressable>
-              </View>
-            </Card>
-          );
-        })}
+                >
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text
+                      style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 16 }]}
+                    >
+                      {budget.name}
+                    </Text>
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                      {category?.name ?? 'All Categories'} · {budget.startDate} to {budget.endDate}
+                    </Text>
+                  </View>
+                  <Badge label={label} variant={variant} dot />
+                </View>
+
+                {/* Progress bar */}
+                <ProgressBar progressPercent={utilizationPercent} color={barColor} height={8} />
+
+                {/* Numbers */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <View>
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>Spent</Text>
+                    <Text
+                      style={[
+                        typography.numericMedium,
+                        { color: colors.textPrimary, fontSize: 15 },
+                      ]}
+                    >
+                      {formatMoneyDisplay(spent, budget.currency)} ({utilizationPercent}%)
+                    </Text>
+                  </View>
+
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                      {isExceeded ? 'Over Budget' : 'Remaining'}
+                    </Text>
+                    <Text
+                      style={[
+                        typography.numericMedium,
+                        { color: isExceeded ? colors.danger : colors.income, fontSize: 15 },
+                      ]}
+                    >
+                      {formatMoneyDisplay(remaining, budget.currency)}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action row */}
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md }}>
+                  <Button
+                    label="Archive"
+                    variant="outline"
+                    size="sm"
+                    onPress={() => void handleArchive(budget.id)}
+                  />
+                  <Button
+                    label="Delete"
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => void handleDelete(budget.id)}
+                  />
+                </View>
+              </Card>
+            );
+          })
+        )}
       </View>
     </ScrollScreen>
   );
 }
-

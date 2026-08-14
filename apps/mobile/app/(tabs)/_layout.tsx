@@ -1,13 +1,49 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Text, View, StyleSheet, Platform } from 'react-native';
 import { useTokens } from '../../src/theme/tokens';
 
-function TabLabel({ label, focused }: { label: string; focused: boolean }) {
-  const { colors } = useTokens();
+function TabIcon({
+  icon,
+  label,
+  focused,
+  isAdd = false,
+}: {
+  icon: string;
+  label: string;
+  focused: boolean;
+  isAdd?: boolean;
+}) {
+  const { colors, radius } = useTokens();
+
+  if (isAdd) {
+    return (
+      <View
+        style={[
+          styles.addTab,
+          {
+            backgroundColor: colors.primary,
+            borderRadius: radius.pill,
+          },
+        ]}
+      >
+        <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '700', marginTop: -2 }}>+</Text>
+      </View>
+    );
+  }
+
   return (
-    <Text style={{ color: focused ? colors.primary : colors.textTertiary, fontSize: 11 }}>
-      {label}
-    </Text>
+    <View style={styles.tabItem}>
+      <Text style={{ fontSize: 18, opacity: focused ? 1 : 0.65 }}>{icon}</Text>
+      <Text
+        style={{
+          color: focused ? colors.primary : colors.textTertiary,
+          fontSize: 11,
+          fontWeight: focused ? '600' : '400',
+        }}
+      >
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -18,43 +54,67 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 84 : 64,
+          paddingTop: 6,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Home', tabBarLabel: ({ focused }) => <TabLabel label="Home" focused={focused} /> }}
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ focused }) => <TabIcon icon="🏠" label="Home" focused={focused} />,
+        }}
       />
       <Tabs.Screen
         name="transactions"
         options={{
-          title: 'Transactions',
-          tabBarLabel: ({ focused }) => <TabLabel label="Activity" focused={focused} />,
+          title: 'Activity',
+          tabBarIcon: ({ focused }) => <TabIcon icon="📊" label="Activity" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="add"
         options={{
           title: 'Add',
-          tabBarLabel: ({ focused }) => <TabLabel label="+" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="+" label="Add" focused={focused} isAdd />,
         }}
       />
       <Tabs.Screen
         name="analytics"
         options={{
-          title: 'Analytics',
-          tabBarLabel: ({ focused }) => <TabLabel label="Analytics" focused={focused} />,
+          title: 'Reports',
+          tabBarIcon: ({ focused }) => <TabIcon icon="📈" label="Reports" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="more"
         options={{
-          title: 'More',
-          tabBarLabel: ({ focused }) => <TabLabel label="More" focused={focused} />,
+          title: 'Hub',
+          tabBarIcon: ({ focused }) => <TabIcon icon="⚡" label="Hub" focused={focused} />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  addTab: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+});

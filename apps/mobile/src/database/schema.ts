@@ -230,4 +230,3 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
     await db.execAsync('PRAGMA user_version = 5');
   }
 }
-

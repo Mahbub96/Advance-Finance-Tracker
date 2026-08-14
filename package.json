@@ -8,8 +8,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev:mobile": "pnpm --filter @personal-finance/mobile start",
-    "dev:api": "pnpm --filter @personal-finance/api start:dev",
+    "dev": "pnpm --filter \"./apps/*\" --parallel dev",
+    "dev:mobile": "pnpm --filter @personal-finance/mobile dev",
+    "dev:api": "pnpm --filter @personal-finance/api dev",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",

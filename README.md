@@ -4,14 +4,14 @@ Production-grade, offline-first personal finance platform.
 
 ## Stack
 
-| Layer | Choice |
-| ----- | ------ |
-| Mobile | React Native + Expo (TypeScript, Expo Router) |
-| Backend | NestJS |
-| Cloud DB | PostgreSQL + Prisma (Phase 6) |
-| Local DB | SQLite |
-| Cache / jobs | Redis |
-| Repo | pnpm monorepo |
+| Layer        | Choice                                        |
+| ------------ | --------------------------------------------- |
+| Mobile       | React Native + Expo (TypeScript, Expo Router) |
+| Backend      | NestJS                                        |
+| Cloud DB     | PostgreSQL + Prisma (Phase 6)                 |
+| Local DB     | SQLite                                        |
+| Cache / jobs | Redis                                         |
+| Repo         | pnpm monorepo                                 |
 
 ## Repository
 

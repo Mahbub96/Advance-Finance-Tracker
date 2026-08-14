@@ -1,7 +1,4 @@
-import {
-  HealthRating,
-  type HealthRating as HealthRatingType,
-} from '@personal-finance/types';
+import { HealthRating, type HealthRating as HealthRatingType } from '@personal-finance/types';
 import type { AnalyticsService } from '../../analytics/services/analytics-service';
 import type { BudgetService } from '../../budgets/services/budget-service';
 import type { DebtService } from '../../debts/services/debt-service';

@@ -24,10 +24,17 @@ export function useAccounts(includeArchived = false) {
 
   const withBalances = items.map((account) => ({
     ...account,
-    balance: deriveAccountBalance(account.openingBalance, txByAccount[account.id] ?? [], account.id),
+    balance: deriveAccountBalance(
+      account.openingBalance,
+      txByAccount[account.id] ?? [],
+      account.id,
+    ),
   }));
 
-  const totalBalance = withBalances.reduce((sum, account) => addMoney(sum, account.balance), '0.00');
+  const totalBalance = withBalances.reduce(
+    (sum, account) => addMoney(sum, account.balance),
+    '0.00',
+  );
 
   return { accounts: withBalances, totalBalance, reload: load };
 }

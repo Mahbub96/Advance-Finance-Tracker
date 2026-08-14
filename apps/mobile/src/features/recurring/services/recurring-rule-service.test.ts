@@ -11,7 +11,6 @@ import type { RecurringRuleRepository } from '../../../repositories/recurring-ru
 import type { TransactionService } from '../../transactions/services/transaction-service';
 import { nextDate, RecurringRuleService } from './recurring-rule-service';
 
-
 function memoryRepos() {
   const accounts: AccountRecord[] = [];
   const categories: CategoryRecord[] = [];
@@ -122,7 +121,9 @@ describe('RecurringRuleService', () => {
     categories.push(category('rent', CategoryKind.EXPENSE));
 
     const mockTxService = {
-      createEntry: jest.fn().mockResolvedValue({ id: 'tx-created-1', type: TransactionType.EXPENSE }),
+      createEntry: jest
+        .fn()
+        .mockResolvedValue({ id: 'tx-created-1', type: TransactionType.EXPENSE }),
       createTransfer: jest.fn(),
     };
 
@@ -193,4 +194,3 @@ describe('RecurringRuleService', () => {
     ).rejects.toThrow(/destination/);
   });
 });
-

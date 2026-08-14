@@ -1,39 +1,41 @@
 import { formatMoneyDisplay } from '@personal-finance/types';
 import { type Href, useRouter } from 'expo-router';
-
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { Badge, type BadgeVariant } from '../../src/components/Badge';
+import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { EmptyState } from '../../src/components/EmptyState';
+import { ProgressBar } from '../../src/components/ProgressBar';
 import { ScrollScreen } from '../../src/components/Screen';
+import { SectionHeader } from '../../src/components/SectionHeader';
+import { StatCard } from '../../src/components/StatCard';
 import { useIntelligence } from '../../src/hooks/use-intelligence';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useTokens } from '../../src/theme/tokens';
 
-import type { lightColors } from '../../src/theme/tokens';
-
-function ratingColor(rating: string, colors: typeof lightColors): string {
+function ratingBadgeVariant(rating: string): BadgeVariant {
   switch (rating) {
     case 'EXCELLENT':
-      return colors.income;
+      return 'success';
     case 'GOOD':
-      return colors.primary;
+      return 'primary';
     case 'FAIR':
-      return colors.warning;
+      return 'warning';
     case 'ATTENTION_NEEDED':
-      return colors.danger;
+      return 'danger';
     default:
-      return colors.textSecondary;
+      return 'neutral';
   }
 }
-
 
 function ratingLabel(rating: string): string {
   switch (rating) {
     case 'EXCELLENT':
       return 'Excellent';
     case 'GOOD':
-      return 'Good';
+      return 'Good Standing';
     case 'FAIR':
-      return 'Fair';
+      return 'Fair - Room to Grow';
     case 'ATTENTION_NEEDED':
       return 'Needs Attention';
     default:
@@ -42,7 +44,7 @@ function ratingLabel(rating: string): string {
 }
 
 export default function IntelligenceScreen() {
-  const { colors, typography, spacing, radius } = useTokens();
+  const { colors, typography, spacing } = useTokens();
   const { forecast, healthScore, insights } = useIntelligence();
   const { settings } = useSettings();
   const currency = settings?.baseCurrency ?? 'BDT';
@@ -50,143 +52,208 @@ export default function IntelligenceScreen() {
 
   const score = healthScore?.score ?? 0;
   const rating = healthScore?.rating ?? 'FAIR';
-  const scoreColor = ratingColor(rating, colors);
-
+  const badgeVariant = ratingBadgeVariant(rating);
+  const scoreColor =
+    rating === 'EXCELLENT'
+      ? colors.income
+      : rating === 'GOOD'
+        ? colors.primary
+        : rating === 'FAIR'
+          ? colors.warning
+          : colors.danger;
 
   return (
     <ScrollScreen>
-      <Text style={[typography.title, { color: colors.textPrimary }]}>Intelligence Hub</Text>
-      
-      {/* 1. Financial Health Score Card */}
-      <Card style={{ gap: spacing.md, backgroundColor: colors.surface }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View>
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>FINANCIAL HEALTH SCORE</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs, marginTop: spacing.xs }}>
-              <Text style={[typography.display, { color: scoreColor, fontSize: 36 }]}>{score}</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 16 }}>/ 100</Text>
+      {/* Header */}
+      <View style={{ gap: 2 }}>
+        <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
+          AUTONOMOUS INSIGHTS
+        </Text>
+        <Text style={[typography.title, { color: colors.textPrimary }]}>Intelligence Hub</Text>
+      </View>
+
+      {/* 1. Financial Health Score Hero Card */}
+      <Card style={{ gap: spacing.md, backgroundColor: colors.surfaceElevated }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+          }}
+        >
+          <View style={{ gap: spacing.xs }}>
+            <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
+              FINANCIAL HEALTH SCORE
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs }}>
+              <Text style={[typography.display, { color: scoreColor, fontSize: 40 }]}>{score}</Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 18 }}>/ 100</Text>
             </View>
           </View>
-          <View
-            style={{
-              paddingVertical: spacing.xs,
-              paddingHorizontal: spacing.sm,
-              borderRadius: radius.pill,
-              backgroundColor: scoreColor + '20',
-            }}
-          >
-            <Text style={{ color: scoreColor, fontWeight: '700', fontSize: 13 }}>
-              {ratingLabel(rating)}
-            </Text>
-          </View>
+          <Badge label={ratingLabel(rating)} variant={badgeVariant} dot />
         </View>
 
-        {/* Progress Bar */}
-        <View style={{ height: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceMuted }}>
-          <View
-            style={{
-              width: `${Math.min(100, score)}%`,
-              height: 8,
-              borderRadius: radius.pill,
-              backgroundColor: scoreColor,
-            }}
-          />
-        </View>
+        {/* Health Score Progress Bar */}
+        <ProgressBar progressPercent={score} color={scoreColor} height={10} />
 
-        {/* Drivers */}
-        <View style={{ gap: spacing.xs }}>
+        {/* Positive & Attention Drivers */}
+        <View style={{ gap: spacing.xs, paddingTop: spacing.xs }}>
           {healthScore?.positiveDrivers.map((driver, idx) => (
-            <Text key={`pos-${idx}`} style={{ color: colors.income, fontSize: 13 }}>
-              ✓ {driver}
-            </Text>
+            <View
+              key={`pos-${idx}`}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.xs,
+                backgroundColor: colors.incomeMuted,
+                paddingVertical: 6,
+                paddingHorizontal: spacing.sm,
+                borderRadius: 6,
+              }}
+            >
+              <Text style={{ color: colors.income, fontSize: 13, fontWeight: '700' }}>✓</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 13, flex: 1 }}>{driver}</Text>
+            </View>
           ))}
+
           {healthScore?.attentionDrivers.map((driver, idx) => (
-            <Text key={`att-${idx}`} style={{ color: colors.warning, fontSize: 13 }}>
-              ⚠ {driver}
-            </Text>
+            <View
+              key={`att-${idx}`}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.xs,
+                backgroundColor: colors.warningMuted,
+                paddingVertical: 6,
+                paddingHorizontal: spacing.sm,
+                borderRadius: 6,
+              }}
+            >
+              <Text style={{ color: colors.warning, fontSize: 13, fontWeight: '700' }}>⚠</Text>
+              <Text style={{ color: colors.textPrimary, fontSize: 13, flex: 1 }}>{driver}</Text>
+            </View>
           ))}
         </View>
       </Card>
 
-      {/* 2. Month-End Spending Velocity & Forecast */}
+      {/* 2. Spending Velocity & Month-End Forecast */}
       {forecast && (
-        <Card style={{ gap: spacing.sm }}>
-          <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>
-            Spending Velocity & Forecast
-          </Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: spacing.xs }}>
-            <View>
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Spent so far</Text>
-              <Text style={[typography.numericLarge, { color: colors.textPrimary, fontSize: 18 }]}>
-                {formatMoneyDisplay(forecast.currentSpend, currency)}
+        <View style={{ gap: spacing.sm }}>
+          <SectionHeader title="Spending Velocity & Forecast" />
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <StatCard
+              label="Spent So Far"
+              value={formatMoneyDisplay(forecast.currentSpend, currency)}
+              subtitle={`Day ${forecast.currentDay} of ${forecast.totalDays}`}
+              icon="💳"
+            />
+            <StatCard
+              label="Daily Burn Rate"
+              value={`${formatMoneyDisplay(forecast.dailyBurnRate, currency)}`}
+              subtitle={`${forecast.daysRemaining} days remaining`}
+              indicatorColor={colors.expense}
+              icon="🔥"
+            />
+          </View>
+
+          <Card style={{ backgroundColor: colors.surfaceSubtle, gap: spacing.xs }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
+                Projected Month-End Spend
               </Text>
-            </View>
-            <View>
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Daily Burn Rate</Text>
-              <Text style={[typography.numericLarge, { color: colors.expense, fontSize: 18 }]}>
-                {formatMoneyDisplay(forecast.dailyBurnRate, currency)}/day
-              </Text>
-            </View>
-            <View>
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Month-End Est.</Text>
-              <Text style={[typography.numericLarge, { color: colors.textPrimary, fontSize: 18 }]}>
+              <Text style={[typography.numericLarge, { color: colors.textPrimary, fontSize: 20 }]}>
                 {formatMoneyDisplay(forecast.projectedMonthEndSpend, currency)}
               </Text>
             </View>
-          </View>
-          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-            Based on Day {forecast.currentDay} of {forecast.totalDays} ({forecast.daysRemaining} days remaining in this month).
-          </Text>
-        </Card>
-      )}
-
-      {/* 3. AI Insights & Actionable Recommendations Feed */}
-      <View style={{ gap: spacing.sm }}>
-        <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>
-          Contextual Insights & Guidance
-        </Text>
-        
-        {insights.length === 0 ? (
-          <Card>
-            <Text style={{ color: colors.textSecondary }}>
-              No immediate financial warnings or alerts. You are on track!
+            <Text style={[typography.caption, { color: colors.textTertiary, fontSize: 12 }]}>
+              Estimated total month spending if current velocity continues unchanged.
             </Text>
           </Card>
-        ) : null}
+        </View>
+      )}
 
-        {insights.map((insight) => {
-          const isWarning = insight.type === 'WARNING';
-          const isAchievement = insight.type === 'ACHIEVEMENT';
-          const iconColor = isWarning ? colors.danger : isAchievement ? colors.income : colors.primary;
+      {/* 3. Contextual AI Recommendations Feed */}
+      <View style={{ gap: spacing.md }}>
+        <SectionHeader
+          title="Contextual Recommendations"
+          badge={insights.length ? `${insights.length} active` : undefined}
+        />
 
-          return (
-            <Card key={insight.id} style={{ gap: spacing.xs }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                <Text style={{ fontSize: 14 }}>
-                  {isWarning ? '⚠️' : isAchievement ? '🎉' : '💡'}
-                </Text>
-                <Text style={[typography.sectionTitle, { color: iconColor, flex: 1 }]}>
-                  {insight.title}
-                </Text>
-              </View>
-              <Text style={{ color: colors.textSecondary, fontSize: 14, lineHeight: 20 }}>
-                {insight.description}
-              </Text>
-              {insight.actionLabel && insight.actionRoute && (
-                <Pressable
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  onPress={() => router.push(insight.actionRoute as Href)}
-                  style={{ alignSelf: 'flex-start', marginTop: spacing.xs }}
-                >
-                  <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 13 }}>
-                    {insight.actionLabel} →
+        {insights.length === 0 ? (
+          <EmptyState
+            icon="🎉"
+            title="All systems optimal"
+            description="No immediate financial warnings or budget alerts. You are on track with your finances!"
+          />
+        ) : (
+          <View style={{ gap: spacing.sm }}>
+            {insights.map((insight) => {
+              const isWarning = insight.type === 'WARNING';
+              const isAchievement = insight.type === 'ACHIEVEMENT';
+              const badgeType: BadgeVariant = isWarning
+                ? 'danger'
+                : isAchievement
+                  ? 'success'
+                  : 'primary';
+
+              return (
+                <Card key={insight.id} style={{ gap: spacing.sm }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: spacing.xs,
+                        flex: 1,
+                      }}
+                    >
+                      <Text style={{ fontSize: 16 }}>
+                        {isWarning ? '⚠️' : isAchievement ? '🎉' : '💡'}
+                      </Text>
+                      <Text
+                        style={[
+                          typography.sectionTitle,
+                          { color: colors.textPrimary, fontSize: 15 },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {insight.title}
+                      </Text>
+                    </View>
+                    <Badge label={insight.type} variant={badgeType} size="sm" />
+                  </View>
+
+                  <Text style={[typography.body, { color: colors.textSecondary, fontSize: 14 }]}>
+                    {insight.description}
                   </Text>
-                </Pressable>
-              )}
 
-            </Card>
-          );
-        })}
+                  {insight.actionLabel && insight.actionRoute && (
+                    <View style={{ marginTop: spacing.xs, alignSelf: 'flex-start' }}>
+                      <Button
+                        label={`${insight.actionLabel} →`}
+                        variant="outline"
+                        size="sm"
+                        onPress={() => router.push(insight.actionRoute as Href)}
+                      />
+                    </View>
+                  )}
+                </Card>
+              );
+            })}
+          </View>
+        )}
       </View>
     </ScrollScreen>
   );
