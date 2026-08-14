@@ -108,6 +108,24 @@ export const GoalStatus = {
 
 export type GoalStatus = (typeof GoalStatus)[keyof typeof GoalStatus];
 
+export const InsightType = {
+  WARNING: 'WARNING',
+  TIP: 'TIP',
+  ACHIEVEMENT: 'ACHIEVEMENT',
+  ANOMALY: 'ANOMALY',
+} as const;
+
+export type InsightType = (typeof InsightType)[keyof typeof InsightType];
+
+export const HealthRating = {
+  EXCELLENT: 'EXCELLENT',
+  GOOD: 'GOOD',
+  FAIR: 'FAIR',
+  ATTENTION_NEEDED: 'ATTENTION_NEEDED',
+} as const;
+
+export type HealthRating = (typeof HealthRating)[keyof typeof HealthRating];
+
 export const ACCOUNT_TYPES = Object.values(AccountType);
 export const TRANSACTION_TYPES = Object.values(TransactionType);
 export const CATEGORY_KINDS = Object.values(CategoryKind);
@@ -118,4 +136,7 @@ export const RECURRING_RULE_STATUSES = Object.values(RecurringRuleStatus);
 export const DEBT_TYPES = Object.values(DebtType);
 export const DEBT_STATUSES = Object.values(DebtStatus);
 export const GOAL_STATUSES = Object.values(GoalStatus);
+export const INSIGHT_TYPES = Object.values(InsightType);
+export const HEALTH_RATINGS = Object.values(HealthRating);
+
 

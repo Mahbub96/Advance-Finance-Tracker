@@ -132,3 +132,5 @@ uploads/
 *.tgz
 .vercel/
 .sentryclirc
+.agents/*
+.claude/*
