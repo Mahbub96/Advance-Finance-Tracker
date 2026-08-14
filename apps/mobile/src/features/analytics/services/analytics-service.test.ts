@@ -111,4 +111,35 @@ describe('AnalyticsService', () => {
     expect(flow.netSavings).toBe('30000.00');
     expect(flow.savingsRatePercent).toBe(60);
   });
+
+  it('computes daily spending trajectory and sparkline values', async () => {
+    const { transactions, service } = memoryRepos();
+
+    transactions.push({
+      id: 'tx-exp-2',
+      type: TransactionType.EXPENSE,
+      accountId: 'acc-1',
+      categoryId: null,
+      merchantName: null,
+      amount: '500.00',
+      currency: 'BDT',
+      transactionDate: '2026-08-02',
+      note: null,
+      source: 'MANUAL',
+      status: TransactionStatus.COMPLETED,
+      transferGroupId: null,
+      transferLeg: null,
+      originalTransactionId: null,
+      adjustmentDirection: null,
+      createdAt: '2026-08-02T00:00:00.000Z',
+      updatedAt: '2026-08-02T00:00:00.000Z',
+      deletedAt: null,
+    });
+
+    const trajectory = await service.getDailySpendingTrajectory('2026-08');
+    expect(trajectory.length).toBeGreaterThan(0);
+
+    const history = await service.getMonthlyCashFlowHistory(3);
+    expect(history.length).toBe(3);
+  });
 });

@@ -1,4 +1,4 @@
-import { formatMoneyDisplay } from '@personal-finance/types';
+import { formatMoneyDisplay, moneyString, parseMoney } from '@personal-finance/types';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
@@ -9,6 +9,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { ScrollScreen } from '../../src/components/Screen';
 import { SegmentedControl } from '../../src/components/SegmentedControl';
 import { useRecurringRules } from '../../src/hooks/use-recurring-rules';
+import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
 
@@ -16,10 +17,13 @@ function getDueBadge(dueState: string, days: number): { label: string; variant: 
   if (dueState === 'OVERDUE') {
     return { label: `${Math.abs(days)}d OVERDUE`, variant: 'danger' };
   }
-  if (dueState === 'DUE') {
+  if (dueState === 'DUE' || days === 0) {
     return { label: 'DUE TODAY', variant: 'warning' };
   }
-  return { label: `Due in ${days}d`, variant: 'neutral' };
+  if (days === 1) {
+    return { label: 'Tomorrow', variant: 'warning' };
+  }
+  return { label: `in ${days} days`, variant: 'neutral' };
 }
 
 function getRecurringIcon(name: string): string {
@@ -41,8 +45,10 @@ export default function RecurringListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
   const { recurringRules, reload } = useRecurringRules();
   const { recurringRules: ruleService, refresh } = useFinance();
+  const { settings } = useSettings();
   const router = useRouter();
 
+  const currency = settings?.baseCurrency ?? 'BDT';
   const [activeTab, setActiveTab] = useState<RecurringFilter>('UPCOMING');
 
   const visibleRules = useMemo(() => {
@@ -51,6 +57,19 @@ export default function RecurringListScreen() {
     }
     return recurringRules;
   }, [recurringRules, activeTab]);
+
+  // Compute total monthly commitments
+  const totalMonthlyCommitment = useMemo(() => {
+    const active = recurringRules.filter((r) => r.rule.status === 'ACTIVE');
+    const total = active.reduce((sum, r) => {
+      const amt = parseMoney(r.rule.amount);
+      if (r.rule.frequency === 'DAILY') return sum.plus(amt.times(30));
+      if (r.rule.frequency === 'WEEKLY') return sum.plus(amt.times(4.33));
+      if (r.rule.frequency === 'YEARLY') return sum.plus(amt.div(12));
+      return sum.plus(amt);
+    }, parseMoney('0'));
+    return moneyString(total);
+  }, [recurringRules]);
 
   const filterOptions = [
     {
@@ -89,24 +108,45 @@ export default function RecurringListScreen() {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <View style={{ gap: 2 }}>
           <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
-            SCHEDULED BILLS & SALARIES
+            FINANCIAL COMMITMENTS
           </Text>
           <Text style={[typography.title, { color: colors.textPrimary }]}>Recurring</Text>
         </View>
-        <Button label="+ Add Recurring" size="sm" onPress={() => router.push('/recurring/new')} />
+        <Button label="+ Add Schedule" size="sm" onPress={() => router.push('/recurring/new')} />
       </View>
+
+      {/* Monthly Commitments Hero Banner per Section 9 */}
+      <Card
+        style={{
+          backgroundColor: colors.surfaceElevated,
+          borderColor: colors.border,
+          gap: spacing.xs,
+          padding: spacing.md,
+        }}
+      >
+        <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
+          Estimated Monthly Commitments
+        </Text>
+        <Text style={[typography.display, { color: colors.textPrimary, fontSize: 26 }]}>
+          {formatMoneyDisplay(totalMonthlyCommitment, currency)}
+        </Text>
+        <Text style={[typography.micro, { color: colors.textTertiary }]}>
+          {recurringRules.filter((r) => r.rule.status === 'ACTIVE').length} active subscriptions &
+          recurring bills
+        </Text>
+      </Card>
 
       {/* Upcoming vs All Filter */}
       <SegmentedControl options={filterOptions} value={activeTab} onChange={setActiveTab} />
 
       {/* Rules List */}
-      <View style={{ gap: spacing.md }}>
+      <View style={{ gap: spacing.sm }}>
         {visibleRules.length === 0 ? (
           <EmptyState
-            icon="🔁"
-            title="No recurring schedules"
-            description="Automate monthly utilities, internet bills, rent, gym subscriptions, or salary deposits."
-            actionLabel="Add Recurring Rule"
+            icon="📅"
+            title="No commitments scheduled"
+            description="Track upcoming internet bills, house rent, streaming subscriptions, and recurring income."
+            actionLabel="Add Commitment"
             onAction={() => router.push('/recurring/new')}
           />
         ) : (
@@ -166,11 +206,22 @@ export default function RecurringListScreen() {
                   {!isPaused && <Badge label={dueLabel} variant={dueVariant} size="sm" />}
                 </View>
 
-                <Text
-                  style={[typography.numericMedium, { color: colors.textPrimary, fontSize: 18 }]}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
                 >
-                  {formatMoneyDisplay(rule.amount, rule.currency)}
-                </Text>
+                  <Text style={[typography.caption, { color: colors.textTertiary }]}>
+                    Commitment Amount
+                  </Text>
+                  <Text
+                    style={[typography.numericMedium, { color: colors.textPrimary, fontSize: 18 }]}
+                  >
+                    {formatMoneyDisplay(rule.amount, rule.currency)}
+                  </Text>
+                </View>
 
                 {/* Actions */}
                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm }}>

@@ -9,6 +9,8 @@ export type CreateCategoryInput = {
   name: string;
   type: CategoryKind;
   parentId?: string | null;
+  icon?: string | null;
+  colorToken?: string | null;
 };
 
 export class CategoryService {
@@ -66,8 +68,8 @@ export class CategoryService {
       parentId: input.parentId ?? null,
       name,
       type: input.type,
-      icon: null,
-      colorToken: null,
+      icon: input.icon ?? null,
+      colorToken: input.colorToken ?? null,
       displayOrder: 0,
       isSystem: false,
       isArchived: false,

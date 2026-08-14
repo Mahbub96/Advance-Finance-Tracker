@@ -28,6 +28,8 @@ function getGoalIcon(name: string): string {
   return '🎯';
 }
 
+const QUICK_INCREMENTS = [500, 1000, 5000, 10000];
+
 export default function GoalsListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
   const { goals, reload } = useGoals();
@@ -41,12 +43,28 @@ export default function GoalsListScreen() {
   const [contributionError, setContributionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const activeGoal = goals.find((g) => g.goal.id === selectedGoalId);
+
+  const handleAddIncrement = (inc: number) => {
+    const cur = parseFloat(contributionAmount) || 0;
+    setContributionAmount(String(cur + inc));
+  };
+
   const handleContribute = async () => {
-    if (!selectedGoalId || !contributionAmount) return;
+    if (!selectedGoalId || !contributionAmount) {
+      setContributionError('Please enter a valid deposit amount');
+      return;
+    }
+    const amt = parseFloat(contributionAmount);
+    if (isNaN(amt) || amt <= 0) {
+      setContributionError('Amount must be greater than 0');
+      return;
+    }
+
     setBusy(true);
     try {
       await goalService.recordContribution(selectedGoalId, {
-        amount: contributionAmount,
+        amount: contributionAmount.trim(),
         accountId: contributionAccountId,
       });
       setSelectedGoalId(null);
@@ -205,6 +223,7 @@ export default function GoalsListScreen() {
                         onPress={() => {
                           setSelectedGoalId(goal.id);
                           setContributionAmount('');
+                          setContributionError(null);
                         }}
                       />
                     )}
@@ -223,7 +242,7 @@ export default function GoalsListScreen() {
       </View>
 
       {/* Contribution Modal */}
-      {selectedGoalId ? (
+      {selectedGoalId && activeGoal ? (
         <Modal transparent animationType="fade" visible={!!selectedGoalId}>
           <View
             style={{
@@ -240,14 +259,62 @@ export default function GoalsListScreen() {
                 borderColor: colors.border,
               }}
             >
-              <SectionHeader title="Record Goal Contribution" />
+              <SectionHeader title={`Deposit to ${activeGoal.goal.name}`} />
+
               <Input
                 label="Deposit Amount"
                 value={contributionAmount}
                 onChangeText={setContributionAmount}
                 keyboardType="decimal-pad"
                 placeholder="1000.00"
+                prefix={activeGoal.goal.currency}
+                error={contributionError}
+                clearable
+                onClear={() => setContributionAmount('')}
               />
+
+              {/* Quick Increment Chips */}
+              <View style={{ gap: spacing.xs }}>
+                <Text style={[typography.micro, { color: colors.textSecondary }]}>
+                  Quick Presets
+                </Text>
+                <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' }}>
+                  {QUICK_INCREMENTS.map((inc) => (
+                    <Pressable
+                      key={inc}
+                      onPress={() => handleAddIncrement(inc)}
+                      style={[
+                        styles.incrementChip,
+                        {
+                          backgroundColor: colors.surfaceMuted,
+                          borderColor: colors.border,
+                          borderRadius: radius.pill,
+                        },
+                      ]}
+                    >
+                      <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '500' }}>
+                        +{inc.toLocaleString()}
+                      </Text>
+                    </Pressable>
+                  ))}
+                  <Pressable
+                    onPress={() => setContributionAmount(activeGoal.remainingAmount)}
+                    style={[
+                      styles.incrementChip,
+                      {
+                        backgroundColor: colors.primaryMuted,
+                        borderColor: colors.primary,
+                        borderRadius: radius.pill,
+                      },
+                    ]}
+                  >
+                    <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+                      Full Remaining (
+                      {formatMoneyDisplay(activeGoal.remainingAmount, activeGoal.goal.currency)})
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
 
               <View style={{ gap: spacing.xs }}>
                 <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
@@ -281,16 +348,12 @@ export default function GoalsListScreen() {
                           fontWeight: contributionAccountId === acc.id ? '600' : '400',
                         }}
                       >
-                        {acc.name}
+                        {acc.name} ({formatMoneyDisplay(acc.balance, acc.currency)})
                       </Text>
                     </Pressable>
                   ))}
                 </View>
               </View>
-
-              {contributionError ? (
-                <Text style={{ color: colors.danger, fontSize: 13 }}>⚠️ {contributionError}</Text>
-              ) : null}
 
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 <View style={{ flex: 1 }}>
@@ -322,5 +385,10 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  incrementChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderWidth: 1,
   },
 });

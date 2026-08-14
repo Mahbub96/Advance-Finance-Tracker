@@ -12,7 +12,9 @@ function getTransactionIcon(type: string, note?: string | null, merchant?: strin
     text.includes('lunch') ||
     text.includes('restaurant') ||
     text.includes('coffee') ||
-    text.includes('snack')
+    text.includes('snack') ||
+    text.includes('grocer') ||
+    text.includes('bazar')
   )
     return '🍔';
   if (
@@ -27,7 +29,8 @@ function getTransactionIcon(type: string, note?: string | null, merchant?: strin
     text.includes('salary') ||
     text.includes('income') ||
     text.includes('bonus') ||
-    text.includes('freelance')
+    text.includes('freelance') ||
+    text.includes('consulting')
   )
     return '💰';
   if (
@@ -67,10 +70,12 @@ function getTransactionIcon(type: string, note?: string | null, merchant?: strin
 
 export function TransactionRow({
   tx,
+  accountName,
   locale = 'en-US',
   onPress,
 }: {
   tx: TransactionRecord;
+  accountName?: string;
   locale?: string;
   onPress?: () => void;
 }) {
@@ -89,7 +94,10 @@ export function TransactionRow({
 
   const sign = isExpense || tx.transferLeg === 'OUT' ? '−' : '+';
   const icon = getTransactionIcon(tx.type, tx.note, tx.merchantName);
-  const title = tx.merchantName || tx.note || (isTransfer ? 'Account Transfer' : tx.type);
+  const primaryTitle = tx.merchantName || tx.note || (isTransfer ? 'Account Transfer' : tx.type);
+  const subtitle = [accountName, tx.merchantName && tx.note ? tx.note : null]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <Pressable onPress={onPress} disabled={!onPress}>
@@ -99,13 +107,14 @@ export function TransactionRow({
             styles.container,
             {
               paddingVertical: spacing.md,
-              paddingHorizontal: spacing.lg,
+              paddingHorizontal: spacing.md,
               opacity: pressed ? 0.85 : 1,
+              backgroundColor: colors.surface,
             },
           ]}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}>
-            {/* Avatar Icon */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}>
+            {/* Small category avatar icon */}
             <View
               style={[
                 styles.iconContainer,
@@ -115,25 +124,28 @@ export function TransactionRow({
                 },
               ]}
             >
-              <Text style={{ fontSize: 18 }}>{icon}</Text>
+              <Text style={{ fontSize: 17 }}>{icon}</Text>
             </View>
 
-            {/* Title & Metadata */}
+            {/* Title / Merchant & Account */}
             <View style={{ flex: 1, gap: 2 }}>
               <Text
                 style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 15 }]}
                 numberOfLines={1}
               >
-                {title}
+                {primaryTitle}
               </Text>
-              <Text style={[typography.caption, { color: colors.textTertiary, fontSize: 12 }]}>
-                {tx.transactionDate} {tx.note && tx.merchantName ? `· ${tx.note}` : ''}
+              <Text
+                style={[typography.caption, { color: colors.textTertiary, fontSize: 12 }]}
+                numberOfLines={1}
+              >
+                {subtitle || (isTransfer ? 'Transfer' : tx.type)}
               </Text>
             </View>
 
-            {/* Tabular Amount */}
+            {/* Amount with Income / Expense visual indication */}
             <View style={{ alignItems: 'flex-end', gap: 2 }}>
-              <Text style={[typography.numericMedium, { color, fontSize: 16 }]}>
+              <Text style={[typography.numericMedium, { color, fontSize: 16, fontWeight: '700' }]}>
                 {sign}
                 {formatMoneyDisplay(tx.amount, tx.currency, locale)}
               </Text>
@@ -143,6 +155,7 @@ export function TransactionRow({
                   {
                     color: colors.textTertiary,
                     textTransform: 'uppercase',
+                    fontSize: 10,
                   },
                 ]}
               >
@@ -161,8 +174,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconContainer: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     alignItems: 'center',
     justifyContent: 'center',
   },

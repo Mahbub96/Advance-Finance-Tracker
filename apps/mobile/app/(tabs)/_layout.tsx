@@ -2,38 +2,12 @@ import { Tabs } from 'expo-router';
 import { Text, View, StyleSheet, Platform } from 'react-native';
 import { useTokens } from '../../src/theme/tokens';
 
-function TabIcon({
-  icon,
-  label,
-  focused,
-  isAdd = false,
-}: {
-  icon: string;
-  label: string;
-  focused: boolean;
-  isAdd?: boolean;
-}) {
-  const { colors, radius } = useTokens();
-
-  if (isAdd) {
-    return (
-      <View
-        style={[
-          styles.addTab,
-          {
-            backgroundColor: colors.primary,
-            borderRadius: radius.pill,
-          },
-        ]}
-      >
-        <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '700', marginTop: -2 }}>+</Text>
-      </View>
-    );
-  }
+function TabIcon({ icon, label, focused }: { icon: string; label: string; focused: boolean }) {
+  const { colors } = useTokens();
 
   return (
     <View style={styles.tabItem}>
-      <Text style={{ fontSize: 18, opacity: focused ? 1 : 0.65 }}>{icon}</Text>
+      <Text style={{ fontSize: 19, opacity: focused ? 1 : 0.65 }}>{icon}</Text>
       <Text
         style={{
           color: focused ? colors.primary : colors.textTertiary,
@@ -76,28 +50,40 @@ export default function TabsLayout() {
         name="transactions"
         options={{
           title: 'Activity',
-          tabBarIcon: ({ focused }) => <TabIcon icon="📊" label="Activity" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="📋" label="Activity" focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="add"
+        name="budgets"
         options={{
-          title: 'Add',
-          tabBarIcon: ({ focused }) => <TabIcon icon="+" label="Add" focused={focused} isAdd />,
+          title: 'Budgets',
+          tabBarIcon: ({ focused }) => <TabIcon icon="🎯" label="Budgets" focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="analytics"
+        name="goals"
         options={{
-          title: 'Reports',
-          tabBarIcon: ({ focused }) => <TabIcon icon="📈" label="Reports" focused={focused} />,
+          title: 'Goals',
+          tabBarIcon: ({ focused }) => <TabIcon icon="🏆" label="Goals" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="more"
         options={{
-          title: 'Hub',
-          tabBarIcon: ({ focused }) => <TabIcon icon="⚡" label="Hub" focused={focused} />,
+          title: 'More',
+          tabBarIcon: ({ focused }) => <TabIcon icon="⚡" label="More" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="add"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
@@ -109,12 +95,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-  },
-  addTab: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
   },
 });

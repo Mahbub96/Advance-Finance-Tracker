@@ -1,6 +1,6 @@
 import { formatMoneyDisplay } from '@personal-finance/types';
 import { type Href, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text, View, StyleSheet } from 'react-native';
 import { Badge, type BadgeVariant } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
@@ -16,6 +16,7 @@ import { useAccounts } from '../../src/hooks/use-accounts';
 import { useBudgets } from '../../src/hooks/use-budgets';
 import { useIntelligence } from '../../src/hooks/use-intelligence';
 import { useSettings } from '../../src/hooks/use-settings';
+import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
 import {
   AIAssistantService,
@@ -55,10 +56,10 @@ function ratingLabel(rating: string): string {
 }
 
 const QUICK_PROMPTS = [
-  'How much did I spend on food this month?',
-  'Am I on track with my budget?',
-  'Show my savings trend',
-  'What can I do to save more?',
+  'How much did I spend on food?',
+  'Am I on track this month?',
+  'Why did my expenses increase?',
+  'When will I reach my savings goal?',
 ];
 
 export default function IntelligenceScreen() {
@@ -67,11 +68,19 @@ export default function IntelligenceScreen() {
   const { accounts, totalBalance } = useAccounts();
   const { budgets } = useBudgets();
   const { settings } = useSettings();
+  const { analytics, nonce } = useFinance();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<IntelligenceTab>('ASSISTANT');
   const [chatQuery, setChatQuery] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [trajectoryPoints, setTrajectoryPoints] = useState<
+    Array<{ day: number; label: string; value: number }>
+  >([]);
+
+  useEffect(() => {
+    void analytics.getDailySpendingTrajectory().then(setTrajectoryPoints);
+  }, [analytics, nonce]);
 
   const currency = settings?.baseCurrency ?? 'BDT';
   const userName = settings?.displayName ?? 'Ahmed';
@@ -419,7 +428,17 @@ export default function IntelligenceScreen() {
             <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>
               Spending Trend
             </Text>
-            <TrendLineChart height={120} />
+            <TrendLineChart
+              points={
+                trajectoryPoints.length > 0
+                  ? trajectoryPoints
+                  : [
+                      { label: 'Day 1', value: 0 },
+                      { label: 'Today', value: parseFloat(forecast?.currentSpend || '0') },
+                    ]
+              }
+              height={120}
+            />
           </Card>
 
           {/* Velocity & Burn Rate Metrics */}

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { useState } from 'react';
+import { View, StyleSheet, Text, Pressable } from 'react-native';
 import { useTokens } from '../../theme/tokens';
 
 export type TrendPoint = {
@@ -23,7 +23,9 @@ export function TrendLineChart({
   height?: number;
   lineColor?: string;
 }) {
-  const { colors, typography, radius } = useTokens();
+  const { colors, typography, radius, spacing } = useTokens();
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+
   const strokeColor = lineColor || colors.primary;
 
   const values = points.map((p) => p.value);
@@ -31,21 +33,54 @@ export function TrendLineChart({
   const maxVal = Math.max(...values) * 1.1;
   const range = maxVal - minVal || 1;
 
+  const activePoint = selectedIdx !== null ? points[selectedIdx] : null;
+
   return (
     <View style={styles.container}>
+      {/* Active Point Info Pill */}
+      {activePoint ? (
+        <View
+          style={[
+            styles.tooltipPill,
+            {
+              backgroundColor: colors.surfaceMuted,
+              borderColor: colors.border,
+              borderRadius: radius.md,
+              marginBottom: spacing.xs,
+            },
+          ]}
+        >
+          <Text style={[typography.captionMedium, { color: colors.textPrimary }]}>
+            {activePoint.label}:
+          </Text>
+          <Text style={[typography.captionMedium, { color: strokeColor, fontWeight: '700' }]}>
+            ৳{Math.round(activePoint.value).toLocaleString()}
+          </Text>
+        </View>
+      ) : null}
+
       <View style={[styles.plotArea, { height }]}>
         {points.map((pt, idx) => {
           const normalized = (pt.value - minVal) / range;
           const pointHeight = Math.max(8, normalized * (height - 35));
+          const isSelected = selectedIdx === idx;
 
           return (
-            <View key={idx} style={styles.pointColumn}>
+            <Pressable
+              key={idx}
+              onPress={() => setSelectedIdx(isSelected ? null : idx)}
+              style={styles.pointColumn}
+            >
               {/* Point Dot */}
               <View
                 style={[
                   styles.dot,
                   {
-                    backgroundColor: strokeColor,
+                    backgroundColor: isSelected ? colors.primaryForeground : strokeColor,
+                    borderColor: strokeColor,
+                    borderWidth: isSelected ? 2 : 0,
+                    width: isSelected ? 12 : 8,
+                    height: isSelected ? 12 : 8,
                     transform: [{ translateY: -pointHeight }],
                     borderRadius: radius.pill,
                   },
@@ -58,18 +93,27 @@ export function TrendLineChart({
                   styles.lineArea,
                   {
                     height: pointHeight,
-                    backgroundColor: strokeColor + '20',
+                    backgroundColor: isSelected ? strokeColor + '40' : strokeColor + '20',
                     borderTopColor: strokeColor,
-                    borderTopWidth: 2,
+                    borderTopWidth: isSelected ? 3 : 2,
                   },
                 ]}
               />
 
               {/* Label */}
-              <Text style={[typography.micro, { color: colors.textTertiary, marginTop: 4 }]}>
+              <Text
+                style={[
+                  typography.micro,
+                  {
+                    color: isSelected ? strokeColor : colors.textTertiary,
+                    fontWeight: isSelected ? '700' : '400',
+                    marginTop: 4,
+                  },
+                ]}
+              >
                 {pt.label}
               </Text>
-            </View>
+            </Pressable>
           );
         })}
       </View>
@@ -80,6 +124,15 @@ export function TrendLineChart({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
+  },
+  tooltipPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
   },
   plotArea: {
     flexDirection: 'row',
@@ -92,10 +145,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
+    paddingVertical: 2,
   },
   dot: {
-    width: 8,
-    height: 8,
     zIndex: 2,
     marginBottom: -4,
   },

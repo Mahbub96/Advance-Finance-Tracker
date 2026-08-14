@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { useState } from 'react';
+import { View, StyleSheet, Text, Pressable } from 'react-native';
 import { useTokens } from '../../theme/tokens';
 
 export type DonutSegment = {
@@ -22,6 +22,7 @@ export function DonutChart({
   size?: number;
 }) {
   const { colors, typography, spacing, radius } = useTokens();
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
   if (!segments || segments.length === 0) {
     return (
@@ -34,10 +35,21 @@ export function DonutChart({
   const ringThickness = 22;
   const innerSize = size - ringThickness * 2;
 
+  const activeSegment = selectedIdx !== null ? segments[selectedIdx] : null;
+  const centerValue = activeSegment
+    ? activeSegment.formattedValue || `${activeSegment.value}`
+    : totalFormatted;
+  const centerLabel = activeSegment
+    ? `${activeSegment.label} (${activeSegment.percentage}%)`
+    : totalLabel;
+
   return (
     <View style={styles.container}>
       {/* Visual Multi-Segment Donut Ring Container */}
-      <View style={[styles.donutContainer, { width: size, height: size }]}>
+      <Pressable
+        onPress={() => setSelectedIdx(null)}
+        style={[styles.donutContainer, { width: size, height: size }]}
+      >
         {/* Outer Circular Ring Background */}
         <View
           style={[
@@ -64,16 +76,21 @@ export function DonutChart({
             },
           ]}
         >
-          {segments.map((seg, idx) => (
-            <View
-              key={idx}
-              style={{
-                flex: Math.max(1, seg.percentage),
-                backgroundColor: seg.color,
-                height: '100%',
-              }}
-            />
-          ))}
+          {segments.map((seg, idx) => {
+            const isDimmed = selectedIdx !== null && selectedIdx !== idx;
+            return (
+              <Pressable
+                key={idx}
+                onPress={() => setSelectedIdx(selectedIdx === idx ? null : idx)}
+                style={{
+                  flex: Math.max(1, seg.percentage),
+                  backgroundColor: seg.color,
+                  height: '100%',
+                  opacity: isDimmed ? 0.35 : 1,
+                }}
+              />
+            );
+          })}
         </View>
 
         {/* Center Cutout for Donut Hole */}
@@ -88,61 +105,105 @@ export function DonutChart({
             },
           ]}
         >
-          {totalFormatted && (
+          {centerValue && (
             <Text
               style={[
                 typography.numericLarge,
-                { color: colors.textPrimary, fontSize: 18, textAlign: 'center' },
+                {
+                  color: activeSegment ? activeSegment.color : colors.textPrimary,
+                  fontSize: 17,
+                  textAlign: 'center',
+                },
               ]}
               numberOfLines={1}
             >
-              {totalFormatted}
+              {centerValue}
             </Text>
           )}
           <Text
             style={[
               typography.micro,
-              { color: colors.textTertiary, textAlign: 'center', marginTop: 2 },
+              {
+                color: colors.textTertiary,
+                textAlign: 'center',
+                marginTop: 2,
+                paddingHorizontal: 4,
+              },
             ]}
             numberOfLines={1}
           >
-            {totalLabel}
+            {centerLabel}
           </Text>
         </View>
-      </View>
+      </Pressable>
 
-      {/* Breakdown Segments Legend */}
+      {/* Breakdown Segments Interactive Legend */}
       <View style={[styles.legendList, { gap: spacing.xs, marginTop: spacing.md }]}>
-        {segments.map((seg, idx) => (
-          <View key={idx} style={styles.legendRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flex: 1 }}>
+        {segments.map((seg, idx) => {
+          const isSelected = selectedIdx === idx;
+          return (
+            <Pressable
+              key={idx}
+              onPress={() => setSelectedIdx(selectedIdx === idx ? null : idx)}
+              style={[
+                styles.legendRow,
+                {
+                  backgroundColor: isSelected ? colors.surfaceElevated : 'transparent',
+                  borderRadius: radius.sm,
+                  paddingHorizontal: 6,
+                  paddingVertical: 5,
+                },
+              ]}
+            >
               <View
-                style={[
-                  styles.legendDot,
-                  { backgroundColor: seg.color, borderRadius: radius.pill },
-                ]}
-              />
-              <Text
-                style={[typography.captionMedium, { color: colors.textPrimary }]}
-                numberOfLines={1}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flex: 1 }}
               >
-                {seg.label}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                {seg.percentage}%
-              </Text>
-              {seg.formattedValue && (
+                <View
+                  style={[
+                    styles.legendDot,
+                    {
+                      backgroundColor: seg.color,
+                      borderRadius: radius.pill,
+                      width: isSelected ? 12 : 10,
+                      height: isSelected ? 12 : 10,
+                    },
+                  ]}
+                />
                 <Text
-                  style={[typography.numericMedium, { color: colors.textPrimary, fontSize: 13 }]}
+                  style={[
+                    typography.captionMedium,
+                    {
+                      color: isSelected ? colors.primary : colors.textPrimary,
+                      fontWeight: isSelected ? '700' : '500',
+                    },
+                  ]}
+                  numberOfLines={1}
                 >
-                  {seg.formattedValue}
+                  {seg.label}
                 </Text>
-              )}
-            </View>
-          </View>
-        ))}
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                  {seg.percentage}%
+                </Text>
+                {seg.formattedValue && (
+                  <Text
+                    style={[
+                      typography.numericMedium,
+                      {
+                        color: colors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: isSelected ? '700' : '400',
+                      },
+                    ]}
+                  >
+                    {seg.formattedValue}
+                  </Text>
+                )}
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
@@ -186,7 +247,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 3,
   },
   legendDot: {
     width: 10,

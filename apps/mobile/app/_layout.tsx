@@ -20,13 +20,13 @@ function NavigationStack() {
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="accounts" options={{ headerShown: true, title: 'Accounts' }} />
-        <Stack.Screen name="budgets" options={{ headerShown: true, title: 'Budgets' }} />
-        <Stack.Screen name="categories" options={{ headerShown: true, title: 'Categories' }} />
-        <Stack.Screen name="recurring" options={{ headerShown: true, title: 'Recurring' }} />
-        <Stack.Screen name="debts" options={{ headerShown: true, title: 'Lending & Debts' }} />
-        <Stack.Screen name="goals" options={{ headerShown: true, title: 'Goals' }} />
-        <Stack.Screen name="intelligence" options={{ headerShown: true, title: 'AI Assistant' }} />
+        <Stack.Screen name="accounts" />
+        <Stack.Screen name="budgets" />
+        <Stack.Screen name="categories" />
+        <Stack.Screen name="recurring" />
+        <Stack.Screen name="debts" />
+        <Stack.Screen name="goals" />
+        <Stack.Screen name="intelligence" />
       </Stack>
     </>
   );

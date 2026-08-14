@@ -1,4 +1,4 @@
-import { Link, type Href } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { Pressable, Text, View, StyleSheet, Alert, Share } from 'react-native';
 import { Badge } from '../../src/components/Badge';
 import { Card } from '../../src/components/Card';
@@ -23,54 +23,53 @@ function HubMenuItem({
   badge?: string;
 }) {
   const { colors, typography, spacing, radius } = useTokens();
+  const router = useRouter();
 
   return (
-    <Link href={href} asChild>
-      <Pressable>
-        {({ pressed }) => (
-          <Card
-            style={[
-              styles.menuCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                paddingVertical: spacing.md,
-                paddingHorizontal: spacing.lg,
-                opacity: pressed ? 0.8 : 1,
-              },
-            ]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}>
-              <View
-                style={[
-                  styles.iconBox,
-                  {
-                    backgroundColor: colors.surfaceMuted,
-                    borderRadius: radius.md,
-                  },
-                ]}
-              >
-                <Text style={{ fontSize: 20 }}>{icon}</Text>
-              </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                  <Text
-                    style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 16 }]}
-                  >
-                    {title}
-                  </Text>
-                  {badge && <Badge label={badge} size="sm" variant="primary" />}
-                </View>
-                <Text style={[typography.caption, { color: colors.textSecondary, fontSize: 12 }]}>
-                  {subtitle}
-                </Text>
-              </View>
-              <Text style={{ color: colors.textTertiary, fontSize: 16 }}>→</Text>
+    <Pressable onPress={() => router.push(href)}>
+      {({ pressed }) => (
+        <Card
+          style={[
+            styles.menuCard,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              paddingVertical: spacing.md,
+              paddingHorizontal: spacing.lg,
+              opacity: pressed ? 0.8 : 1,
+            },
+          ]}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}>
+            <View
+              style={[
+                styles.iconBox,
+                {
+                  backgroundColor: colors.surfaceMuted,
+                  borderRadius: radius.md,
+                },
+              ]}
+            >
+              <Text style={{ fontSize: 20 }}>{icon}</Text>
             </View>
-          </Card>
-        )}
-      </Pressable>
-    </Link>
+            <View style={{ flex: 1, gap: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                <Text
+                  style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 16 }]}
+                >
+                  {title}
+                </Text>
+                {badge && <Badge label={badge} size="sm" variant="primary" />}
+              </View>
+              <Text style={[typography.caption, { color: colors.textSecondary, fontSize: 12 }]}>
+                {subtitle}
+              </Text>
+            </View>
+            <Text style={{ color: colors.textTertiary, fontSize: 16 }}>→</Text>
+          </View>
+        </Card>
+      )}
+    </Pressable>
   );
 }
 
@@ -263,15 +262,19 @@ export default function MoreScreen() {
 
       {/* 3. Intelligence & Analytics Hub */}
       <View style={{ gap: spacing.sm }}>
-        <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
-          AI & FORECASTING
-        </Text>
+        <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>AI & REPORTS</Text>
         <HubMenuItem
           href="/intelligence"
           icon="✨"
-          title="AI Assistant & Hub"
+          title="AI Assistant & Insights"
           subtitle="Health score, velocity burn-rate & financial advisor"
           badge="AI"
+        />
+        <HubMenuItem
+          href="/(tabs)/analytics"
+          icon="📊"
+          title="Reports & Analytics"
+          subtitle="Monthly cash flow history and category breakdown"
         />
       </View>
 

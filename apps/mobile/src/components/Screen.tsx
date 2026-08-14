@@ -11,17 +11,17 @@ export function Screen({ children, style, noPadding = false, ...rest }: ScreenPr
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={StyleSheet.flatten([styles.container, { backgroundColor: colors.background }])}
     >
       <View
-        style={[
+        style={StyleSheet.flatten([
           styles.container,
           {
             padding: noPadding ? 0 : spacing.lg,
             gap: spacing.lg,
           },
           style,
-        ]}
+        ])}
         {...rest}
       >
         {children}
@@ -38,23 +38,24 @@ export function ScrollScreen({
   children,
   contentContainerStyle,
   noPadding = false,
+  style,
   ...rest
 }: ScrollScreenProps) {
   const { colors, spacing } = useTokens();
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={StyleSheet.flatten([styles.container, { backgroundColor: colors.background }, style])}
     >
       <ScrollView
-        contentContainerStyle={[
+        contentContainerStyle={StyleSheet.flatten([
           {
             padding: noPadding ? 0 : spacing.lg,
             gap: spacing.lg,
             paddingBottom: spacing.xxxl,
           },
           contentContainerStyle,
-        ]}
+        ])}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}

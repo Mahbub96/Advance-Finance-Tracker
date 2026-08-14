@@ -8,35 +8,33 @@ import {
   type TextInputProps,
   type StyleProp,
   type ViewStyle,
-  type TextStyle,
 } from 'react-native';
 import { useTokens } from '../theme/tokens';
 
-type Props = TextInputProps & {
+type Props = Omit<TextInputProps, 'multiline'> & {
   label: string;
   error?: string | null;
   helperText?: string;
-  prefix?: string;
-  suffix?: string;
+  maxLength?: number;
   containerStyle?: StyleProp<ViewStyle>;
   clearable?: boolean;
   onClear?: () => void;
+  minHeight?: number;
 };
 
-export function Input({
+export function TextArea({
   label,
   error,
   helperText,
-  prefix,
-  suffix,
+  maxLength,
   containerStyle,
   clearable,
   onClear,
+  minHeight = 90,
   onFocus,
   onBlur,
-  value,
+  value = '',
   style,
-  multiline,
   ...rest
 }: Props) {
   const { colors, radius, spacing, typography } = useTokens();
@@ -44,40 +42,12 @@ export function Input({
 
   const borderColor = error ? colors.danger : isFocused ? colors.primary : colors.border;
   const isShowClear = clearable && !!value && !rest.editable === false;
-
-  const rootStyle = StyleSheet.flatten([{ gap: spacing.xs }, containerStyle]);
-
-  const inputContainerStyle: ViewStyle = StyleSheet.flatten([
-    styles.inputContainer,
-    {
-      borderColor,
-      backgroundColor: colors.surface,
-      borderRadius: radius.md,
-      borderWidth: isFocused ? 1.5 : 1,
-      minHeight: multiline ? 80 : 48,
-      alignItems: multiline ? ('flex-start' as const) : ('center' as const),
-      paddingVertical: multiline ? spacing.xs : 0,
-    },
-  ]);
-
-  const textInputStyle: TextStyle = StyleSheet.flatten([
-    styles.input,
-    typography.body,
-    {
-      color: colors.textPrimary,
-      paddingHorizontal: prefix ? spacing.xs : spacing.md,
-      paddingVertical: multiline ? spacing.xs : spacing.md,
-      textAlignVertical: multiline ? ('top' as const) : ('center' as const),
-    },
-    style,
-  ]);
+  const currentLength = typeof value === 'string' ? value.length : 0;
 
   return (
-    <View style={rootStyle}>
-      {label ? (
-        <View
-          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-        >
+    <View style={[{ gap: spacing.xs }, containerStyle]}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        {label ? (
           <Text
             style={[
               typography.captionMedium,
@@ -86,34 +56,52 @@ export function Input({
           >
             {label}
           </Text>
-        </View>
-      ) : null}
+        ) : (
+          <View />
+        )}
 
-      <View style={inputContainerStyle}>
-        {prefix ? (
+        {maxLength ? (
           <Text
             style={[
-              typography.bodyMedium,
-              {
-                color: isFocused ? colors.primary : colors.textSecondary,
-                paddingLeft: spacing.md,
-                paddingRight: spacing.xs,
-                fontWeight: '600',
-                paddingTop: multiline ? spacing.xs : 0,
-              },
+              typography.micro,
+              { color: currentLength > maxLength ? colors.danger : colors.textTertiary },
             ]}
           >
-            {prefix}
+            {currentLength}/{maxLength}
           </Text>
         ) : null}
+      </View>
 
+      <View
+        style={[
+          styles.container,
+          {
+            borderColor,
+            backgroundColor: colors.surface,
+            borderRadius: radius.md,
+            borderWidth: isFocused ? 1.5 : 1,
+            minHeight,
+            padding: spacing.sm,
+          },
+        ]}
+      >
         <TextInput
           accessibilityLabel={label || undefined}
           accessibilityRole="text"
           placeholderTextColor={colors.textTertiary}
           value={value}
-          multiline={multiline}
-          style={textInputStyle}
+          multiline
+          maxLength={maxLength}
+          textAlignVertical="top"
+          style={[
+            styles.textInput,
+            typography.body,
+            {
+              color: colors.textPrimary,
+              minHeight: minHeight - 16,
+            },
+            style,
+          ]}
           onFocus={(e) => {
             setIsFocused(true);
             onFocus?.(e);
@@ -127,23 +115,12 @@ export function Input({
 
         {isShowClear ? (
           <Pressable
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={onClear}
-            style={{ paddingRight: spacing.md }}
+            style={styles.clearBtn}
           >
-            <Text style={{ color: colors.textTertiary, fontSize: 14 }}>✕</Text>
+            <Text style={{ color: colors.textTertiary, fontSize: 13 }}>✕</Text>
           </Pressable>
-        ) : null}
-
-        {suffix ? (
-          <Text
-            style={[
-              typography.captionMedium,
-              { color: colors.textTertiary, paddingRight: spacing.md },
-            ]}
-          >
-            {suffix}
-          </Text>
         ) : null}
       </View>
 
@@ -164,10 +141,16 @@ export function Input({
 }
 
 const styles = StyleSheet.create({
-  inputContainer: {
-    flexDirection: 'row',
+  container: {
+    position: 'relative',
   },
-  input: {
-    flex: 1,
+  textInput: {
+    padding: 0,
+  },
+  clearBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    padding: 4,
   },
 });

@@ -6,7 +6,9 @@ import { Input } from '../../src/components/Input';
 import { ScrollScreen } from '../../src/components/Screen';
 import { SegmentedControl } from '../../src/components/SegmentedControl';
 import { TransactionRow } from '../../src/features/transactions/components/TransactionRow';
+import { useAccounts } from '../../src/hooks/use-accounts';
 import { useTransactions } from '../../src/hooks/use-transactions';
+import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
 import type { TransactionRecord } from '../../src/database/records';
 
@@ -24,6 +26,8 @@ function getRelativeDateLabel(dateStr: string): string {
 export default function TransactionsScreen() {
   const { colors, typography, spacing } = useTokens();
   const { transactions } = useTransactions();
+  const { accounts } = useAccounts();
+  const finance = useFinance();
   const router = useRouter();
 
   const [filter, setFilter] = useState<FilterType>('ALL');
@@ -125,7 +129,38 @@ export default function TransactionsScreen() {
 
               {/* Transactions in this date */}
               {txs.map((tx) => (
-                <TransactionRow key={tx.id} tx={tx} />
+                <TransactionRow
+                  key={tx.id}
+                  tx={tx}
+                  accountName={accounts.find((a) => a.id === tx.accountId)?.name}
+                  onPress={() => {
+                    const desc = [
+                      `Type: ${tx.type}`,
+                      `Amount: ${tx.amount} ${tx.currency}`,
+                      `Date: ${tx.transactionDate}`,
+                      tx.merchantName ? `Merchant: ${tx.merchantName}` : null,
+                      tx.note ? `Note: ${tx.note}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join('\n');
+
+                    // Prompt action
+                    import('react-native').then(({ Alert }) => {
+                      Alert.alert('Transaction Details', desc, [
+                        { text: 'Close', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: () => {
+                            finance.transactions.softDelete(tx.id).then(() => {
+                              finance.refresh();
+                            });
+                          },
+                        },
+                      ]);
+                    });
+                  }}
+                />
               ))}
             </View>
           ))

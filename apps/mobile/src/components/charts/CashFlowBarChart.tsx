@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { useState } from 'react';
+import { View, StyleSheet, Text, Pressable } from 'react-native';
 import { useTokens } from '../../theme/tokens';
 
 export type BarDataPoint = {
@@ -16,6 +16,7 @@ export function CashFlowBarChart({
   height?: number;
 }) {
   const { colors, typography, spacing, radius } = useTokens();
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
   const defaultData: BarDataPoint[] = [
     { label: 'W1', income: 25000, expense: 12000 },
@@ -25,19 +26,68 @@ export function CashFlowBarChart({
   ];
 
   const items = data && data.length > 0 ? data : defaultData;
-
   const maxVal = Math.max(...items.map((i) => Math.max(i.income, i.expense)), 1000);
+
+  const activeItem = selectedIdx !== null ? items[selectedIdx] : null;
+  const netSavings = activeItem ? activeItem.income - activeItem.expense : 0;
 
   return (
     <View style={styles.container}>
+      {/* Active Selection Tooltip Banner */}
+      {activeItem ? (
+        <View
+          style={[
+            styles.tooltipBanner,
+            {
+              backgroundColor: colors.surfaceMuted,
+              borderColor: colors.border,
+              borderRadius: radius.md,
+              marginBottom: spacing.sm,
+            },
+          ]}
+        >
+          <Text style={[typography.captionMedium, { color: colors.textPrimary }]}>
+            {activeItem.label} Summary:
+          </Text>
+          <View style={{ flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' }}>
+            <Text style={[typography.caption, { color: colors.income }]}>
+              +৳{Math.round(activeItem.income).toLocaleString()}
+            </Text>
+            <Text style={[typography.caption, { color: colors.expense }]}>
+              -৳{Math.round(activeItem.expense).toLocaleString()}
+            </Text>
+            <Text
+              style={[
+                typography.captionMedium,
+                { color: netSavings >= 0 ? colors.income : colors.danger },
+              ]}
+            >
+              Net: {netSavings >= 0 ? '+' : ''}৳{Math.round(netSavings).toLocaleString()}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
       {/* Visual Bars Container */}
       <View style={[styles.chartArea, { height }]}>
         {items.map((item, idx) => {
-          const incHeight = Math.max(6, (item.income / maxVal) * (height - 30));
-          const expHeight = Math.max(6, (item.expense / maxVal) * (height - 30));
+          const incHeight = Math.max(6, (item.income / maxVal) * (height - 35));
+          const expHeight = Math.max(6, (item.expense / maxVal) * (height - 35));
+          const isSelected = selectedIdx === idx;
+          const isDimmed = selectedIdx !== null && !isSelected;
 
           return (
-            <View key={idx} style={styles.barGroup}>
+            <Pressable
+              key={idx}
+              onPress={() => setSelectedIdx(isSelected ? null : idx)}
+              style={[
+                styles.barGroup,
+                {
+                  opacity: isDimmed ? 0.35 : 1,
+                  transform: [{ scale: isSelected ? 1.05 : 1 }],
+                },
+              ]}
+            >
               <View style={styles.barPair}>
                 {/* Income Bar (Green) */}
                 <View
@@ -47,6 +97,8 @@ export function CashFlowBarChart({
                       height: incHeight,
                       backgroundColor: colors.income,
                       borderRadius: radius.xs,
+                      borderWidth: isSelected ? 1.5 : 0,
+                      borderColor: colors.textPrimary,
                     },
                   ]}
                 />
@@ -58,15 +110,26 @@ export function CashFlowBarChart({
                       height: expHeight,
                       backgroundColor: colors.expense,
                       borderRadius: radius.xs,
+                      borderWidth: isSelected ? 1.5 : 0,
+                      borderColor: colors.textPrimary,
                     },
                   ]}
                 />
               </View>
               {/* Bottom Label */}
-              <Text style={[typography.micro, { color: colors.textTertiary, marginTop: 4 }]}>
+              <Text
+                style={[
+                  typography.micro,
+                  {
+                    color: isSelected ? colors.primary : colors.textTertiary,
+                    fontWeight: isSelected ? '700' : '400',
+                    marginTop: 4,
+                  },
+                ]}
+              >
                 {item.label}
               </Text>
-            </View>
+            </Pressable>
           );
         })}
       </View>
@@ -94,6 +157,14 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
   },
+  tooltipBanner: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   chartArea: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -105,6 +176,7 @@ const styles = StyleSheet.create({
   barGroup: {
     alignItems: 'center',
     flex: 1,
+    paddingVertical: 2,
   },
   barPair: {
     flexDirection: 'row',

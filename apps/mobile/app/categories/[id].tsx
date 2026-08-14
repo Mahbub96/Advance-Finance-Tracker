@@ -12,10 +12,11 @@ import { useTokens } from '../../src/theme/tokens';
 export default function EditCategoryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { categories, refresh } = useFinance();
-  const router = useRouter();
   const { colors, typography, spacing, radius } = useTokens();
+  const router = useRouter();
   const [category, setCategory] = useState<CategoryRecord | null>(null);
   const [name, setName] = useState('');
+  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -35,9 +36,11 @@ export default function EditCategoryScreen() {
     );
   }
 
+  const nameError = submitted && !name.trim() ? 'Category name is required' : null;
+
   const handleUpdate = async () => {
+    setSubmitted(true);
     if (!name.trim()) {
-      setError('Please provide a category name');
       return;
     }
     setBusy(true);
@@ -80,7 +83,17 @@ export default function EditCategoryScreen() {
       </View>
 
       <Card style={{ gap: spacing.md, backgroundColor: colors.surfaceElevated }}>
-        <Input label="Category Name" value={name} onChangeText={setName} />
+        <Input
+          label="Category Name"
+          value={name}
+          onChangeText={(t) => {
+            setName(t);
+            if (submitted) setSubmitted(false);
+          }}
+          error={nameError}
+          clearable
+          onClear={() => setName('')}
+        />
         <Text style={[typography.caption, { color: colors.textSecondary }]}>
           Type: {category.type} {category.isSystem ? '· System Default' : ''}
         </Text>

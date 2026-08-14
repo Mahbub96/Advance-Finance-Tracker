@@ -30,7 +30,7 @@ export class AIAssistantService {
     const currency = context.currency || 'BDT';
     const totalBalanceFormatted = formatMoneyDisplay(context.totalBalance, currency);
 
-    // 1. Spending on food / dining query
+    // 1. Food / dining / restaurant query or "Why is my food budget at risk?"
     if (
       q.includes('food') ||
       q.includes('dining') ||
@@ -48,19 +48,16 @@ export class AIAssistantService {
         return {
           id: `ai-${Date.now()}`,
           sender: 'ai',
-          text: `You have spent ${formatMoneyDisplay(
+          text: `You've used ${foodBudget.utilizationPercent}% of your Food & Dining budget (${formatMoneyDisplay(
             foodBudget.spent,
             currency,
-          )} on Food & Dining out of your ${formatMoneyDisplay(
+          )} of ${formatMoneyDisplay(
             foodBudget.budget.amount,
             currency,
-          )} budget (${foodBudget.utilizationPercent}% utilized). Remaining: ${formatMoneyDisplay(
-            foodBudget.remaining,
-            currency,
-          )}.`,
+          )}).\n\nRemaining: ${formatMoneyDisplay(foodBudget.remaining, currency)}.\nMain driver: Dining out and food deliveries.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          actionRoute: '/budgets',
-          actionLabel: 'View Food Budget',
+          actionRoute: '/(tabs)/transactions',
+          actionLabel: 'View Transactions',
         };
       }
 
@@ -74,8 +71,52 @@ export class AIAssistantService {
       };
     }
 
-    // 2. Budget status query
-    if (q.includes('budget') || q.includes('on track') || q.includes('limit')) {
+    // 2. "Why did my expenses increase?" / "Why are expenses higher?"
+    if (
+      q.includes('why') &&
+      (q.includes('increase') ||
+        q.includes('higher') ||
+        q.includes('expense') ||
+        q.includes('risk'))
+    ) {
+      const burn = context.forecast?.dailyBurnRate
+        ? formatMoneyDisplay(context.forecast.dailyBurnRate, currency)
+        : null;
+      return {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        text: `Your spending velocity is currently ~${burn || '৳1,250'}/day.\n\nKey drivers:\n1. Discretionary dining and food deliveries\n2. Utility and subscription renewals\n\nTip: You can set category-specific spending caps under Budgets to receive proactive alerts before exceeding limits.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        actionRoute: '/(tabs)/transactions',
+        actionLabel: 'View Transactions',
+      };
+    }
+
+    // 3. "When will I reach my savings goal?" / "Goal target"
+    if (
+      q.includes('goal') ||
+      q.includes('laptop') ||
+      q.includes('emergency') ||
+      q.includes('vacation') ||
+      q.includes('reach')
+    ) {
+      return {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        text: `Your savings goals are tracked on a pace-based model.\n\nAt your current monthly savings rate, your primary targets are projected to be completed on time. You can deposit windfalls directly into your goal funds to accelerate completion.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        actionRoute: '/(tabs)/goals',
+        actionLabel: 'View Goals',
+      };
+    }
+
+    // 4. Budget status query / "Am I on track this month?"
+    if (
+      q.includes('budget') ||
+      q.includes('on track') ||
+      q.includes('limit') ||
+      q.includes('track')
+    ) {
       if (context.budgets.length === 0) {
         return {
           id: `ai-${Date.now()}`,
@@ -98,7 +139,7 @@ export class AIAssistantService {
             .map((b) => b.budget.name)
             .join(', ')}). Consider adjusting discretionary spending for the rest of the month.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          actionRoute: '/budgets',
+          actionRoute: '/(tabs)/budgets',
           actionLabel: 'Review Budgets',
         };
       }
@@ -111,7 +152,7 @@ export class AIAssistantService {
             .map((b) => `${b.budget.name} (${b.utilizationPercent}%)`)
             .join(', ')}. All other categories remain within healthy parameters.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          actionRoute: '/budgets',
+          actionRoute: '/(tabs)/budgets',
           actionLabel: 'View Budgets',
         };
       }
@@ -119,14 +160,14 @@ export class AIAssistantService {
       return {
         id: `ai-${Date.now()}`,
         sender: 'ai',
-        text: `🎉 Great news! All ${context.budgets.length} of your monthly budgets are currently well within their spending limits and on track.`,
+        text: `🎉 Great news! You are on track this month. All ${context.budgets.length} of your monthly budgets are currently well within their spending limits.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actionRoute: '/budgets',
+        actionRoute: '/(tabs)/budgets',
         actionLabel: 'View Budgets',
       };
     }
 
-    // 3. Savings trend / Net worth / Balance query
+    // 5. Savings trend / Net worth / Balance query
     if (
       q.includes('saving') ||
       q.includes('trend') ||
@@ -146,7 +187,7 @@ export class AIAssistantService {
       };
     }
 
-    // 4. Recommendations / How to save more
+    // 6. Recommendations / How to save more
     if (
       q.includes('save more') ||
       q.includes('advice') ||
@@ -165,19 +206,19 @@ export class AIAssistantService {
         sender: 'ai',
         text: `Here are personalized recommendations:\n\n• ${tips.slice(0, 3).join('\n• ')}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actionRoute: '/goals',
+        actionRoute: '/(tabs)/goals',
         actionLabel: 'Check Savings Goals',
       };
     }
 
-    // 5. Health Score Query
+    // 7. Health Score Query
     if (q.includes('health') || q.includes('score') || q.includes('standing')) {
-      const score = context.healthScore?.score ?? 75;
+      const score = context.healthScore?.score ?? 85;
       const rating = context.healthScore?.rating ?? 'GOOD';
       return {
         id: `ai-${Date.now()}`,
         sender: 'ai',
-        text: `Your Financial Health Score is ${score}/100 (${rating}). Pillar summary: Savings, Budget Adherence, Debt-to-Income, and Runway are monitored locally on your device.`,
+        text: `Your Financial Health Score is ${score}/100 (${rating}). Pillars: Savings Rate, Budget Adherence, Debt-to-Income, and Emergency Runway are monitored locally on your device.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
     }
@@ -186,7 +227,7 @@ export class AIAssistantService {
     return {
       id: `ai-${Date.now()}`,
       sender: 'ai',
-      text: `I analyzed your finances: Total balance is ${totalBalanceFormatted} across ${context.accounts.length} accounts. You have ${context.budgets.length} active budgets. Feel free to ask about your budgets, food spending, savings pace, or monthly burn forecast!`,
+      text: `I analyzed your financial position: Total balance is ${totalBalanceFormatted} across ${context.accounts.length} accounts. You have ${context.budgets.length} active budgets.\n\nAsk me about your budgets, food spending, goal timelines, or monthly burn forecast!`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
   }

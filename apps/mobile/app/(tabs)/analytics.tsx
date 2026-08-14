@@ -13,7 +13,6 @@ import { DonutChart, type DonutSegment } from '../../src/components/charts/Donut
 import { CashFlowBarChart } from '../../src/components/charts/CashFlowBarChart';
 import type { CategoryBreakdownItem } from '../../src/features/analytics/services/analytics-service';
 import { useSettings } from '../../src/hooks/use-settings';
-import { monthRange } from '../../src/lib/clock';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
 
@@ -56,21 +55,30 @@ export default function AnalyticsScreen() {
   const [activeTab, setActiveTab] = useState<ReportTab>('SPENDING');
   const [currentMonthIndex, setCurrentMonthIndex] = useState(new Date().getMonth());
   const currentYear = new Date().getFullYear();
-
   const [cashFlow, setCashFlow] = useState({
     totalIncome: '0.00',
     totalExpenses: '0.00',
     netSavings: '0.00',
     savingsRatePercent: 0,
   });
+  const [cashFlowHistory, setCashFlowHistory] = useState<
+    Array<{ label: string; income: number; expense: number }>
+  >([]);
   const [categories, setCategories] = useState<CategoryBreakdownItem[]>([]);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    const { from, to } = monthRange();
-    void analytics.getCashFlow(from, to).then(setCashFlow);
-    void analytics.getCategoryBreakdown(from, to).then(setCategories);
-  }, [analytics, nonce, currentMonthIndex]);
+    const year = currentYear;
+    const month = currentMonthIndex;
+    const yearMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const firstDay = `${yearMonth}-01`;
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    const lastDay = `${yearMonth}-${String(lastDayOfMonth).padStart(2, '0')}`;
+
+    void analytics.getCashFlow(firstDay, lastDay).then(setCashFlow);
+    void analytics.getCategoryBreakdown(firstDay, lastDay).then(setCategories);
+    void analytics.getMonthlyCashFlowHistory(6).then(setCashFlowHistory);
+  }, [analytics, nonce, currentMonthIndex, currentYear]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -232,28 +240,17 @@ export default function AnalyticsScreen() {
               Cash Flow Trend
             </Text>
             <CashFlowBarChart
-              data={[
-                {
-                  label: 'W1',
-                  income: parseFloat(cashFlow.totalIncome) * 0.4,
-                  expense: parseFloat(cashFlow.totalExpenses) * 0.25,
-                },
-                {
-                  label: 'W2',
-                  income: parseFloat(cashFlow.totalIncome) * 0.2,
-                  expense: parseFloat(cashFlow.totalExpenses) * 0.35,
-                },
-                {
-                  label: 'W3',
-                  income: parseFloat(cashFlow.totalIncome) * 0.3,
-                  expense: parseFloat(cashFlow.totalExpenses) * 0.2,
-                },
-                {
-                  label: 'W4',
-                  income: parseFloat(cashFlow.totalIncome) * 0.1,
-                  expense: parseFloat(cashFlow.totalExpenses) * 0.2,
-                },
-              ]}
+              data={
+                cashFlowHistory.length > 0
+                  ? cashFlowHistory
+                  : [
+                      {
+                        label: 'Current',
+                        income: parseFloat(cashFlow.totalIncome),
+                        expense: parseFloat(cashFlow.totalExpenses),
+                      },
+                    ]
+              }
               height={130}
             />
           </Card>
