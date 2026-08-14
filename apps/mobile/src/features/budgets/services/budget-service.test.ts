@@ -132,6 +132,47 @@ describe('BudgetService', () => {
     expect(summary?.risk).toBe('ATTENTION');
   });
 
+  it('aggregates expenses from subcategories under a parent category budget', async () => {
+    const { categories, transactions, service } = memoryRepos();
+    const parentCategory = category('food', 'Food');
+    const childCategory: CategoryRecord = {
+      ...category('groceries', 'Groceries'),
+      parentId: 'food',
+    };
+    categories.push(parentCategory, childCategory);
+    transactions.push(expense('tx-1', 'groceries', '600.00'));
+
+    await service.create({
+      name: 'Food budget',
+      amount: '1000',
+      currency: 'BDT',
+      periodType: BudgetPeriodType.CUSTOM,
+      startDate: '2026-08-01',
+      endDate: '2026-08-31',
+      categoryId: 'food',
+    });
+
+    const [summary] = await service.summaries();
+    expect(summary?.spent).toBe('600.00');
+    expect(summary?.remaining).toBe('400.00');
+  });
+
+  it('deletes a budget softly', async () => {
+    const { service } = memoryRepos();
+    const record = await service.create({
+      name: 'Temp budget',
+      amount: '500',
+      currency: 'BDT',
+      periodType: BudgetPeriodType.CUSTOM,
+      startDate: '2026-08-01',
+      endDate: '2026-08-31',
+    });
+
+    await service.delete(record.id);
+    const list = await service.list();
+    expect(list.find((b) => b.id === record.id)).toBeUndefined();
+  });
+
   it('rejects income categories for budgets', async () => {
     const { categories, service } = memoryRepos();
     categories.push(category('salary', 'Salary', CategoryKind.INCOME));
@@ -149,3 +190,4 @@ describe('BudgetService', () => {
     ).rejects.toThrow(/expense category/);
   });
 });
+

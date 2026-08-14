@@ -38,12 +38,13 @@ docs/product/
 Phase 0 — Product Discovery        Done
 Phase 1 — UX Research              Done
 Phase 2 — Technical Architecture   Done
-Phase 3 — Core Product             In progress
+Phase 3 — Core Product             Done
 Phase 4 — Advanced Finance         Not started
 Phase 5 — Intelligence             Not started
 Phase 6 — Cloud                    Not started
 Phase 7 — Public Release           Not started
 ```
+
 
 Release 1 of Phase 3 (local-first financial foundation) is implemented:
 
@@ -104,7 +105,7 @@ New ideas go to `IDEAS_BACKLOG.md` first.
 
 ---
 
-# 7. Phase 3 — Core Product (in progress)
+# 7. Phase 3 — Core Product (Done)
 
 Accounts · Categories · Transactions · Transfers · Budgets · Recurring Transactions
 
@@ -122,10 +123,11 @@ Accounts · Categories · Transactions · Transfers · Budgets · Recurring Tran
 - [x] NestJS health shell
 - [x] Lint / typecheck / test / CI
 
-## Remaining Phase 3
+## Release 2 — Budgets & Recurring Transactions Engine
 
-- [ ] Budgets
-- [ ] Recurring transactions
+- [x] Budgets (all-expenses & subcategory aggregation)
+- [x] Recurring transactions (execution engine, auto-process on load, pause/resume/delete)
+
 
 ---
 

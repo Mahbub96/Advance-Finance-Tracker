@@ -1,10 +1,11 @@
 import { formatMoneyDisplay } from '@personal-finance/types';
 import { Link } from 'expo-router';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { ScrollScreen } from '../../src/components/Screen';
 import { useBudgets } from '../../src/hooks/use-budgets';
+import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
 
 function riskLabel(risk: string): string {
@@ -15,7 +16,20 @@ function riskLabel(risk: string): string {
 
 export default function BudgetsListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
-  const { budgets } = useBudgets();
+  const { budgets, reload } = useBudgets();
+  const { budgets: budgetService, refresh } = useFinance();
+
+  const handleArchive = async (id: string) => {
+    await budgetService.archive(id);
+    refresh();
+    await reload();
+  };
+
+  const handleDelete = async (id: string) => {
+    await budgetService.delete(id);
+    refresh();
+    await reload();
+  };
 
   return (
     <ScrollScreen>
@@ -64,6 +78,14 @@ export default function BudgetsListScreen() {
                   Left {formatMoneyDisplay(remaining, budget.currency)}
                 </Text>
               </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.xs }}>
+                <Pressable onPress={() => void handleArchive(budget.id)}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Archive</Text>
+                </Pressable>
+                <Pressable onPress={() => void handleDelete(budget.id)}>
+                  <Text style={{ color: colors.danger, fontSize: 13 }}>Delete</Text>
+                </Pressable>
+              </View>
             </Card>
           );
         })}
@@ -71,3 +93,4 @@ export default function BudgetsListScreen() {
     </ScrollScreen>
   );
 }
+

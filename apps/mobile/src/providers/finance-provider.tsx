@@ -49,22 +49,41 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const categoryRepo = new CategoryRepository(db);
     const recurringRuleRepo = new RecurringRuleRepository(db);
     const transactionRepo = new TransactionRepository(db);
+    const transactionService = new TransactionService(transactionRepo, accountRepo);
+    const recurringRuleService = new RecurringRuleService(
+      recurringRuleRepo,
+      accountRepo,
+      categoryRepo,
+      transactionService,
+    );
+
     return {
       db,
       accounts: new AccountService(accountRepo),
       budgets: new BudgetService(budgetRepo, categoryRepo, transactionRepo),
       categories: new CategoryService(categoryRepo),
-      recurringRules: new RecurringRuleService(recurringRuleRepo, accountRepo, categoryRepo),
-      transactions: new TransactionService(transactionRepo, accountRepo),
+      recurringRules: recurringRuleService,
+      transactions: transactionService,
       settings: new SettingsRepository(db),
       refresh: () => setNonce((n) => n + 1),
       nonce,
     };
   }, [db, nonce]);
 
+  useEffect(() => {
+    if (value) {
+      void value.recurringRules.processDueRules(new Date(), true).then((res) => {
+        if (res.processed > 0) {
+          value.refresh();
+        }
+      });
+    }
+  }, [value]);
+
   if (!value) return null;
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }
+
 
 export function useFinance(): FinanceServices {
   const ctx = useContext(FinanceContext);

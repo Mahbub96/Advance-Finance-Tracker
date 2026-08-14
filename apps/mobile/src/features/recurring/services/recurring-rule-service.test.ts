@@ -8,7 +8,9 @@ import type { AccountRecord, CategoryRecord, RecurringRuleRecord } from '../../.
 import type { AccountRepository } from '../../../repositories/account-repository';
 import type { CategoryRepository } from '../../../repositories/category-repository';
 import type { RecurringRuleRepository } from '../../../repositories/recurring-rule-repository';
+import type { TransactionService } from '../../transactions/services/transaction-service';
 import { nextDate, RecurringRuleService } from './recurring-rule-service';
+
 
 function memoryRepos() {
   const accounts: AccountRecord[] = [];
@@ -113,6 +115,66 @@ describe('RecurringRuleService', () => {
     expect(rule.nextOccurrence).toBe('2026-08-25');
   });
 
+  it('executes a due recurring rule and advances its next occurrence', async () => {
+    const { accounts, categories, rules } = memoryRepos();
+    accounts.push(account('bank'));
+
+    categories.push(category('rent', CategoryKind.EXPENSE));
+
+    const mockTxService = {
+      createEntry: jest.fn().mockResolvedValue({ id: 'tx-created-1', type: TransactionType.EXPENSE }),
+      createTransfer: jest.fn(),
+    };
+
+    const serviceWithTx = new RecurringRuleService(
+      {
+        async list() {
+          return rules.filter((r) => !r.deletedAt && r.status === 'ACTIVE');
+        },
+        async getById(id: string) {
+          return rules.find((r) => r.id === id && !r.deletedAt) ?? null;
+        },
+        async insert(record: RecurringRuleRecord) {
+          rules.push(record);
+        },
+        async update(record: RecurringRuleRecord) {
+          const index = rules.findIndex((r) => r.id === record.id);
+          if (index >= 0) rules[index] = record;
+        },
+      } as unknown as RecurringRuleRepository,
+      {
+        async getById(id: string) {
+          return accounts.find((a) => a.id === id) ?? null;
+        },
+      } as unknown as AccountRepository,
+      {
+        async getById(id: string) {
+          return categories.find((c) => c.id === id) ?? null;
+        },
+      } as unknown as CategoryRepository,
+      mockTxService as unknown as TransactionService,
+    );
+
+    const rule = await serviceWithTx.create({
+      type: TransactionType.EXPENSE,
+      name: 'House Rent',
+      amount: '15000',
+      currency: 'BDT',
+      accountId: 'bank',
+      categoryId: 'rent',
+      frequency: RecurringFrequency.MONTHLY,
+      startDate: '2026-08-01',
+      autoCreate: true,
+    });
+
+    const result = await serviceWithTx.processDueRules(new Date('2026-08-15'), true);
+    expect(result.processed).toBe(1);
+    expect(mockTxService.createEntry).toHaveBeenCalledTimes(1);
+
+    const updatedRule = rules.find((r) => r.id === rule.id);
+    expect(updatedRule?.nextOccurrence).toBe('2026-09-01');
+  });
+
   it('rejects transfer rules without a valid destination account', async () => {
     const { accounts, service } = memoryRepos();
     accounts.push(account('cash'));
@@ -131,3 +193,4 @@ describe('RecurringRuleService', () => {
     ).rejects.toThrow(/destination/);
   });
 });
+

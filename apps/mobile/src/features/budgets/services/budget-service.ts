@@ -53,9 +53,12 @@ export class BudgetService {
     return Promise.all(
       budgets.map(async (budget) => {
         const rows = await this.transactions.listByDateRange(budget.startDate, budget.endDate);
+        const matchingCategoryIds = budget.categoryId
+          ? [budget.categoryId, ...categories.filter((c) => c.parentId === budget.categoryId).map((c) => c.id)]
+          : null;
         const spent = rows
           .filter((tx) => tx.type === TransactionType.EXPENSE)
-          .filter((tx) => !budget.categoryId || tx.categoryId === budget.categoryId)
+          .filter((tx) => !matchingCategoryIds || (tx.categoryId !== null && matchingCategoryIds.includes(tx.categoryId)))
           .reduce((total, tx) => moneyString(parseMoney(total).plus(parseMoney(tx.amount))), '0.00');
         const remaining = subtractMoney(budget.amount, spent);
         const utilizationPercent = parseMoney(budget.amount).isZero()
@@ -130,4 +133,18 @@ export class BudgetService {
     await this.budgets.update(next);
     return next;
   }
+
+  async delete(id: string): Promise<void> {
+    const current = await this.budgets.getById(id);
+    if (!current) {
+      throw new Error('Budget not found');
+    }
+    const deletedAt = nowIso();
+    await this.budgets.update({
+      ...current,
+      deletedAt,
+      updatedAt: deletedAt,
+    });
+  }
 }
+

@@ -4,12 +4,13 @@ import {
   RecurringRuleStatus,
   TransactionType,
 } from '@personal-finance/types';
-import type { RecurringRuleRecord } from '../../../database/records';
+import type { RecurringRuleRecord, TransactionRecord } from '../../../database/records';
 import { nowIso } from '../../../lib/clock';
 import { createId } from '../../../lib/id';
 import type { AccountRepository } from '../../../repositories/account-repository';
 import type { CategoryRepository } from '../../../repositories/category-repository';
 import type { RecurringRuleRepository } from '../../../repositories/recurring-rule-repository';
+import type { TransactionService } from '../../transactions/services/transaction-service';
 
 export type CreateRecurringRuleInput = {
   type: RecurringRuleRecord['type'];
@@ -39,6 +40,7 @@ export class RecurringRuleService {
     private readonly rules: RecurringRuleRepository,
     private readonly accounts: AccountRepository,
     private readonly categories: CategoryRepository,
+    private readonly transactions?: TransactionService,
   ) {}
 
   async list(includeInactive = false): Promise<RecurringRuleRecord[]> {
@@ -140,12 +142,92 @@ export class RecurringRuleService {
     return next;
   }
 
+  async executeRule(id: string, executionDate?: string): Promise<TransactionRecord[]> {
+    const current = await this.rules.getById(id);
+    if (!current) {
+      throw new Error('Recurring rule not found');
+    }
+    if (current.status !== RecurringRuleStatus.ACTIVE) {
+      throw new Error('Cannot execute an inactive recurring rule');
+    }
+    if (!this.transactions) {
+      throw new Error('Transaction service is required to execute rules');
+    }
+
+    const txDate = executionDate || current.nextOccurrence;
+    const note = current.note ? `${current.name} - ${current.note}` : current.name;
+    let createdTx: TransactionRecord[] = [];
+
+    if (current.type === TransactionType.TRANSFER) {
+      if (!current.destinationAccountId) {
+        throw new Error('Transfer destination account is missing');
+      }
+      createdTx = await this.transactions.createTransfer({
+        sourceAccountId: current.accountId,
+        destinationAccountId: current.destinationAccountId,
+        amount: current.amount,
+        transactionDate: txDate,
+        note,
+      });
+    } else {
+      const tx = await this.transactions.createEntry({
+        type: current.type,
+        accountId: current.accountId,
+        categoryId: current.categoryId,
+        amount: current.amount,
+        transactionDate: txDate,
+        note,
+      });
+      createdTx = [tx];
+    }
+
+    await this.advance(id);
+    return createdTx;
+  }
+
+  async processDueRules(
+    today = new Date(),
+    autoOnly = false,
+  ): Promise<{ processed: number; transactions: TransactionRecord[] }> {
+    const dateStr = dateKey(today);
+    const activeRules = await this.rules.list(false);
+    const dueRules = activeRules.filter((rule) => {
+      if (rule.nextOccurrence > dateStr) return false;
+      if (autoOnly && !rule.autoCreate) return false;
+      return true;
+    });
+
+    let processedCount = 0;
+    const createdTransactions: TransactionRecord[] = [];
+
+    for (const rule of dueRules) {
+      const txs = await this.executeRule(rule.id, rule.nextOccurrence);
+      processedCount += 1;
+      createdTransactions.push(...txs);
+    }
+
+    return { processed: processedCount, transactions: createdTransactions };
+  }
+
   async pause(id: string): Promise<RecurringRuleRecord> {
     return this.setStatus(id, RecurringRuleStatus.PAUSED);
   }
 
   async resume(id: string): Promise<RecurringRuleRecord> {
     return this.setStatus(id, RecurringRuleStatus.ACTIVE);
+  }
+
+  async delete(id: string): Promise<void> {
+    const current = await this.rules.getById(id);
+    if (!current) {
+      throw new Error('Recurring rule not found');
+    }
+    const deletedAt = nowIso();
+    await this.rules.update({
+      ...current,
+      deletedAt,
+      updatedAt: deletedAt,
+    });
   }
 
   private async setStatus(
@@ -161,6 +243,7 @@ export class RecurringRuleService {
     return next;
   }
 }
+
 
 export function nextDate(
   from: string,
