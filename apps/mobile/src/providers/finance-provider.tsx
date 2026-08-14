@@ -22,6 +22,9 @@ import { BudgetService } from '../features/budgets/services/budget-service';
 import { CategoryService } from '../features/categories/services/category-service';
 import { DebtService } from '../features/debts/services/debt-service';
 import { GoalService } from '../features/goals/services/goal-service';
+import { ForecastingService } from '../features/intelligence/services/forecasting-service';
+import { HealthService } from '../features/intelligence/services/health-service';
+import { InsightsService } from '../features/intelligence/services/insights-service';
 import { RecurringRuleService } from '../features/recurring/services/recurring-rule-service';
 import { TransactionService } from '../features/transactions/services/transaction-service';
 
@@ -32,7 +35,10 @@ type FinanceServices = {
   budgets: BudgetService;
   categories: CategoryService;
   debts: DebtService;
+  forecasting: ForecastingService;
   goals: GoalService;
+  health: HealthService;
+  insights: InsightsService;
   recurringRules: RecurringRuleService;
   transactions: TransactionService;
   settings: SettingsRepository;
@@ -67,6 +73,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       categoryRepo,
       transactionService,
     );
+    const budgetService = new BudgetService(budgetRepo, categoryRepo, transactionRepo);
     const debtService = new DebtService(debtRepo, accountRepo, transactionService);
     const goalService = new GoalService(goalRepo, accountRepo, transactionService);
     const analyticsService = new AnalyticsService(
@@ -79,15 +86,32 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       goalRepo,
       settingsRepo,
     );
+    const forecastingService = new ForecastingService(transactionRepo, budgetRepo);
+    const healthService = new HealthService(
+      analyticsService,
+      budgetService,
+      debtService,
+      goalService,
+    );
+    const insightsService = new InsightsService(
+      forecastingService,
+      healthService,
+      recurringRuleService,
+      debtService,
+      goalService,
+    );
 
     return {
       db,
       accounts: new AccountService(accountRepo),
       analytics: analyticsService,
-      budgets: new BudgetService(budgetRepo, categoryRepo, transactionRepo),
+      budgets: budgetService,
       categories: new CategoryService(categoryRepo),
       debts: debtService,
+      forecasting: forecastingService,
       goals: goalService,
+      health: healthService,
+      insights: insightsService,
       recurringRules: recurringRuleService,
       transactions: transactionService,
       settings: settingsRepo,
@@ -95,6 +119,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       nonce,
     };
   }, [db, nonce]);
+
 
   useEffect(() => {
     if (value) {

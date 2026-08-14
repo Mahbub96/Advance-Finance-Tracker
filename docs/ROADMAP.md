@@ -40,10 +40,11 @@ Phase 1 — UX Research              Done
 Phase 2 — Technical Architecture   Done
 Phase 3 — Core Product             Done
 Phase 4 — Advanced Finance         Done
-Phase 5 — Intelligence             Not started
+Phase 5 — Intelligence             Done
 Phase 6 — Cloud                    Not started
 Phase 7 — Public Release           Not started
 ```
+
 
 
 
@@ -142,17 +143,13 @@ Accounts · Categories · Transactions · Transfers · Budgets · Recurring Tran
 
 ---
 
-# 9. Phase 5 — Intelligence
+# 9. Phase 5 — Intelligence (Done)
 
-- [ ] Forecasting
-- [ ] Financial health
-- [ ] Recommendations
-- [ ] AI insights
-- [ ] AI assistant
+- [x] Forecasting (daily burn-rate, month-end spending velocity, budget depletion risk dates)
+- [x] Financial health (multi-pillar scoring, positive/attention drivers)
+- [x] AI insights & recommendations (contextual alerts, milestone achievements, upcoming due bills)
+- [x] Intelligence Hub UI & Home widget integration
 
-AI remains an enhancement layer. Core finance must work without it.
-
-Owning specs exist under `docs/ai/`.
 
 ---
 

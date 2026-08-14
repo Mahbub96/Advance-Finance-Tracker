@@ -52,8 +52,16 @@ export default function MoreScreen() {
             <Text style={{ color: colors.textSecondary }}>Savings targets and plans</Text>
           </Card>
         </Link>
+        <Link href="/intelligence" asChild>
+          <Card>
+            <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>Intelligence Hub</Text>
+            <Text style={{ color: colors.textSecondary }}>Financial health score, velocity & AI insights</Text>
+          </Card>
+        </Link>
       </View>
     </ScrollScreen>
   );
 }
+
+
 
