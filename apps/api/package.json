@@ -1,0 +1,6 @@
+{
+  "name": "@personal-finance/api",
+  "private": true,
+  "version": "0.0.0",
+  "description": "NestJS API — scaffold pending Phase 0–2 docs"
+}

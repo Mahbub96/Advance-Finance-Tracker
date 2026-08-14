@@ -1,0 +1,17 @@
+{
+  "name": "personal-finance",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Production-grade offline-first personal finance platform",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:mobile": "pnpm --filter @personal-finance/mobile start",
+    "dev:api": "pnpm --filter @personal-finance/api start:dev",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  }
+}
