@@ -1,5 +1,6 @@
 import type { AccountType, MoneyString } from '@personal-finance/types';
 import type { BudgetPeriodType, BudgetStatus } from '@personal-finance/types';
+import type { DebtStatus, DebtType, GoalStatus } from '@personal-finance/types';
 import type { RecurringFrequency, RecurringRuleStatus } from '@personal-finance/types';
 
 export type AccountRecord = {
@@ -104,3 +105,58 @@ export type RecurringRuleRecord = {
   updatedAt: string;
   deletedAt: string | null;
 };
+
+export type DebtRecord = {
+  id: string;
+  type: DebtType;
+  personName: string;
+  amount: MoneyString;
+  currency: string;
+  accountId: string | null;
+  dueDate: string | null;
+  issueDate: string;
+  status: DebtStatus;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+export type DebtRepaymentRecord = {
+  id: string;
+  debtId: string;
+  amount: MoneyString;
+  repaymentDate: string;
+  accountId: string | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+export type GoalRecord = {
+  id: string;
+  name: string;
+  targetAmount: MoneyString;
+  currency: string;
+  targetDate: string | null;
+  accountId: string | null;
+  status: GoalStatus;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+export type GoalContributionRecord = {
+  id: string;
+  goalId: string;
+  amount: MoneyString;
+  contributionDate: string;
+  accountId: string | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+

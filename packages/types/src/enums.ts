@@ -84,6 +84,30 @@ export const RecurringRuleStatus = {
 export type RecurringRuleStatus =
   (typeof RecurringRuleStatus)[keyof typeof RecurringRuleStatus];
 
+export const DebtType = {
+  LENT: 'LENT',
+  BORROWED: 'BORROWED',
+} as const;
+
+export type DebtType = (typeof DebtType)[keyof typeof DebtType];
+
+export const DebtStatus = {
+  ACTIVE: 'ACTIVE',
+  REPAID: 'REPAID',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type DebtStatus = (typeof DebtStatus)[keyof typeof DebtStatus];
+
+export const GoalStatus = {
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  PAUSED: 'PAUSED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type GoalStatus = (typeof GoalStatus)[keyof typeof GoalStatus];
+
 export const ACCOUNT_TYPES = Object.values(AccountType);
 export const TRANSACTION_TYPES = Object.values(TransactionType);
 export const CATEGORY_KINDS = Object.values(CategoryKind);
@@ -91,3 +115,7 @@ export const BUDGET_PERIOD_TYPES = Object.values(BudgetPeriodType);
 export const BUDGET_STATUSES = Object.values(BudgetStatus);
 export const RECURRING_FREQUENCIES = Object.values(RecurringFrequency);
 export const RECURRING_RULE_STATUSES = Object.values(RecurringRuleStatus);
+export const DEBT_TYPES = Object.values(DebtType);
+export const DEBT_STATUSES = Object.values(DebtStatus);
+export const GOAL_STATUSES = Object.values(GoalStatus);
+

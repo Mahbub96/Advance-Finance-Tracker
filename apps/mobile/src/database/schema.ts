@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 5;
 
 const MIGRATION_V1 = `
 CREATE TABLE IF NOT EXISTS user_settings (
@@ -130,6 +130,77 @@ CREATE INDEX IF NOT EXISTS idx_recurring_rules_next ON recurring_rules(next_occu
 CREATE INDEX IF NOT EXISTS idx_recurring_rules_account ON recurring_rules(account_id, deleted_at);
 `;
 
+const MIGRATION_V4 = `
+CREATE TABLE IF NOT EXISTS debts (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  person_name TEXT NOT NULL,
+  amount TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  account_id TEXT,
+  due_date TEXT,
+  issue_date TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ACTIVE',
+  note TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE TABLE IF NOT EXISTS debt_repayments (
+  id TEXT PRIMARY KEY,
+  debt_id TEXT NOT NULL,
+  amount TEXT NOT NULL,
+  repayment_date TEXT NOT NULL,
+  account_id TEXT,
+  note TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (debt_id) REFERENCES debts(id),
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_debts_status ON debts(status, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_debts_due ON debts(due_date, status, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_debt_repayments_debt ON debt_repayments(debt_id, deleted_at);
+`;
+
+const MIGRATION_V5 = `
+CREATE TABLE IF NOT EXISTS goals (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  target_amount TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  target_date TEXT,
+  account_id TEXT,
+  status TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+  note TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE TABLE IF NOT EXISTS goal_contributions (
+  id TEXT PRIMARY KEY,
+  goal_id TEXT NOT NULL,
+  amount TEXT NOT NULL,
+  contribution_date TEXT NOT NULL,
+  account_id TEXT,
+  note TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (goal_id) REFERENCES goals(id),
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_goal_contributions_goal ON goal_contributions(goal_id, deleted_at);
+`;
+
 export async function migrate(db: SQLiteDatabase): Promise<void> {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const current = row?.user_version ?? 0;
@@ -148,4 +219,15 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
     await db.execAsync(MIGRATION_V3);
     await db.execAsync('PRAGMA user_version = 3');
   }
+
+  if (current < 4) {
+    await db.execAsync(MIGRATION_V4);
+    await db.execAsync('PRAGMA user_version = 4');
+  }
+
+  if (current < 5) {
+    await db.execAsync(MIGRATION_V5);
+    await db.execAsync('PRAGMA user_version = 5');
+  }
 }
+

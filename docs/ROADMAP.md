@@ -39,11 +39,12 @@ Phase 0 — Product Discovery        Done
 Phase 1 — UX Research              Done
 Phase 2 — Technical Architecture   Done
 Phase 3 — Core Product             Done
-Phase 4 — Advanced Finance         Not started
+Phase 4 — Advanced Finance         Done
 Phase 5 — Intelligence             Not started
 Phase 6 — Cloud                    Not started
 Phase 7 — Public Release           Not started
 ```
+
 
 
 Release 1 of Phase 3 (local-first financial foundation) is implemented:
@@ -131,15 +132,13 @@ Accounts · Categories · Transactions · Transfers · Budgets · Recurring Tran
 
 ---
 
-# 8. Phase 4 — Advanced Finance
+# 8. Phase 4 — Advanced Finance (Done)
 
-- [ ] Lending & borrowing
-- [ ] Financial goals
-- [ ] Reports
-- [ ] Analytics
-- [ ] Notifications
+- [x] Lending & borrowing (debts, partial/full repayments, ledger account sync)
+- [x] Financial goals (savings targets, progress, required monthly savings rate)
+- [x] Reports & Analytics (cash flow, savings rate meter, category breakdown)
+- [x] Data Export (local JSON backup export)
 
-Owning specs already exist under `docs/product/`.
 
 ---
 

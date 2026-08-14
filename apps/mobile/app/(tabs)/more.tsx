@@ -1,7 +1,7 @@
 import { Link } from 'expo-router';
 import { Text, View } from 'react-native';
 import { Card } from '../../src/components/Card';
-import { Screen } from '../../src/components/Screen';
+import { ScrollScreen } from '../../src/components/Screen';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useTokens } from '../../src/theme/tokens';
 
@@ -10,10 +10,10 @@ export default function MoreScreen() {
   const { settings } = useSettings();
 
   return (
-    <Screen>
+    <ScrollScreen>
       <Text style={[typography.title, { color: colors.textPrimary }]}>More</Text>
       <Text style={[typography.body, { color: colors.textSecondary }]}>
-        Currency: {settings?.baseCurrency ?? '—'} · Local only
+        Currency: {settings?.baseCurrency ?? '—'} · Offline-first
       </Text>
       <View style={{ gap: spacing.md }}>
         <Link href="/accounts" asChild>
@@ -40,7 +40,20 @@ export default function MoreScreen() {
             <Text style={{ color: colors.textSecondary }}>Expected bills and income</Text>
           </Card>
         </Link>
+        <Link href="/debts" asChild>
+          <Card>
+            <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>Lending & Borrowing</Text>
+            <Text style={{ color: colors.textSecondary }}>Track money lent and owed</Text>
+          </Card>
+        </Link>
+        <Link href="/goals" asChild>
+          <Card>
+            <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>Financial Goals</Text>
+            <Text style={{ color: colors.textSecondary }}>Savings targets and plans</Text>
+          </Card>
+        </Link>
       </View>
-    </Screen>
+    </ScrollScreen>
   );
 }
+

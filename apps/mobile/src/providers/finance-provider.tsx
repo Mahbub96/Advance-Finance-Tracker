@@ -11,20 +11,28 @@ import { getDatabase } from '../database/client';
 import { AccountRepository } from '../repositories/account-repository';
 import { BudgetRepository } from '../repositories/budget-repository';
 import { CategoryRepository } from '../repositories/category-repository';
+import { DebtRepository } from '../repositories/debt-repository';
+import { GoalRepository } from '../repositories/goal-repository';
 import { RecurringRuleRepository } from '../repositories/recurring-rule-repository';
 import { SettingsRepository } from '../repositories/settings-repository';
 import { TransactionRepository } from '../repositories/transaction-repository';
 import { AccountService } from '../features/accounts/services/account-service';
+import { AnalyticsService } from '../features/analytics/services/analytics-service';
 import { BudgetService } from '../features/budgets/services/budget-service';
 import { CategoryService } from '../features/categories/services/category-service';
+import { DebtService } from '../features/debts/services/debt-service';
+import { GoalService } from '../features/goals/services/goal-service';
 import { RecurringRuleService } from '../features/recurring/services/recurring-rule-service';
 import { TransactionService } from '../features/transactions/services/transaction-service';
 
 type FinanceServices = {
   db: SQLiteDatabase;
   accounts: AccountService;
+  analytics: AnalyticsService;
   budgets: BudgetService;
   categories: CategoryService;
+  debts: DebtService;
+  goals: GoalService;
   recurringRules: RecurringRuleService;
   transactions: TransactionService;
   settings: SettingsRepository;
@@ -47,7 +55,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const accountRepo = new AccountRepository(db);
     const budgetRepo = new BudgetRepository(db);
     const categoryRepo = new CategoryRepository(db);
+    const debtRepo = new DebtRepository(db);
+    const goalRepo = new GoalRepository(db);
     const recurringRuleRepo = new RecurringRuleRepository(db);
+    const settingsRepo = new SettingsRepository(db);
     const transactionRepo = new TransactionRepository(db);
     const transactionService = new TransactionService(transactionRepo, accountRepo);
     const recurringRuleService = new RecurringRuleService(
@@ -56,15 +67,30 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       categoryRepo,
       transactionService,
     );
+    const debtService = new DebtService(debtRepo, accountRepo, transactionService);
+    const goalService = new GoalService(goalRepo, accountRepo, transactionService);
+    const analyticsService = new AnalyticsService(
+      accountRepo,
+      categoryRepo,
+      transactionRepo,
+      budgetRepo,
+      recurringRuleRepo,
+      debtRepo,
+      goalRepo,
+      settingsRepo,
+    );
 
     return {
       db,
       accounts: new AccountService(accountRepo),
+      analytics: analyticsService,
       budgets: new BudgetService(budgetRepo, categoryRepo, transactionRepo),
       categories: new CategoryService(categoryRepo),
+      debts: debtService,
+      goals: goalService,
       recurringRules: recurringRuleService,
       transactions: transactionService,
-      settings: new SettingsRepository(db),
+      settings: settingsRepo,
       refresh: () => setNonce((n) => n + 1),
       nonce,
     };
@@ -84,7 +110,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }
 
-
 export function useFinance(): FinanceServices {
   const ctx = useContext(FinanceContext);
   if (!ctx) {
@@ -92,3 +117,4 @@ export function useFinance(): FinanceServices {
   }
   return ctx;
 }
+
