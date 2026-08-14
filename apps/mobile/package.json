@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@personal-finance/types": "workspace:*",
+    "@personal-finance/api-client": "workspace:*",
+    "@personal-finance/config": "workspace:*",
     "expo": "~57.0.12",
     "expo-constants": "~57.0.10",
     "expo-linking": "~57.0.5",

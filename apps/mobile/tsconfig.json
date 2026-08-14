@@ -5,7 +5,9 @@
     "noUncheckedIndexedAccess": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@personal-finance/types": ["../../packages/types/index.ts"]
+      "@personal-finance/types": ["../../packages/types/index.ts"],
+      "@personal-finance/api-client": ["../../packages/api-client/index.ts"],
+      "@personal-finance/config": ["../../packages/config/index.ts"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]

@@ -266,7 +266,7 @@ export default function IntelligenceScreen() {
           )}
 
           {/* Interactive Chat Input */}
-          <View style={[styles.inputRow, { gap: spacing.xs }]}>
+          <View style={[styles.inputRow, { gap: spacing.xs, alignItems: 'center' }]}>
             <View style={{ flex: 1 }}>
               <Input
                 label=""
@@ -275,7 +275,18 @@ export default function IntelligenceScreen() {
                 onChangeText={setChatQuery}
               />
             </View>
-            <Button label="Send" size="md" onPress={() => handleSendQuery()} />
+            <Pressable
+              onPress={() => handleSendQuery()}
+              style={[
+                styles.sendBtn,
+                {
+                  backgroundColor: colors.primary,
+                  borderRadius: radius.pill,
+                },
+              ]}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>➤</Text>
+            </Pressable>
           </View>
         </View>
       )}
@@ -515,5 +526,11 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  sendBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -8,7 +8,14 @@ export async function getDatabase(): Promise<SQLiteDatabase> {
   if (!databasePromise) {
     databasePromise = (async () => {
       const db = await openDatabaseAsync('personal-finance.db');
-      await db.execAsync('PRAGMA foreign_keys = ON');
+      // Performance PRAGMAs for fast mobile storage
+      await db.execAsync(`
+        PRAGMA foreign_keys = ON;
+        PRAGMA journal_mode = WAL;
+        PRAGMA synchronous = NORMAL;
+        PRAGMA temp_store = MEMORY;
+        PRAGMA cache_size = -64000;
+      `);
       await migrate(db);
       return db;
     })();

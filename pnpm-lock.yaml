@@ -69,6 +69,12 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@personal-finance/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
+      '@personal-finance/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@personal-finance/types':
         specifier: workspace:*
         version: link:../../packages/types

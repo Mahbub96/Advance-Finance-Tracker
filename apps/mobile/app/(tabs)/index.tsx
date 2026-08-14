@@ -59,7 +59,7 @@ export default function HomeScreen() {
   const { budgets } = useBudgets();
   const { goals } = useGoals();
   const { recurringRules } = useRecurringRules();
-  const { healthScore, insights } = useIntelligence();
+  const { insights } = useIntelligence();
   const { analytics, nonce } = useFinance();
   const router = useRouter();
 
@@ -74,10 +74,6 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const { from, to } = monthRange();
-    void analytics.getCashFlow(from, to).then(setCashFlow);
-    void analytics.getDailyBalanceSparkline(14).then(setSparklinePoints);
-
-    // Calculate real month-over-month delta
     const now = new Date();
     const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const prevYearMonth = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
@@ -87,7 +83,11 @@ export default function HomeScreen() {
     void Promise.all([
       analytics.getCashFlow(from, to),
       analytics.getCashFlow(prevFirst, prevLast),
-    ]).then(([current, prev]) => {
+      analytics.getDailyBalanceSparkline(14),
+    ]).then(([current, prev, sparkline]) => {
+      setCashFlow(current);
+      setSparklinePoints(sparkline);
+
       const curInc = parseFloat(current.totalIncome);
       const prevInc = parseFloat(prev.totalIncome);
       if (prevInc > 0) {
@@ -103,7 +103,7 @@ export default function HomeScreen() {
 
   const currency = settings?.baseCurrency ?? 'BDT';
   const recent = transactions.filter((tx) => tx.transferLeg !== 'IN').slice(0, 4);
-  const { greeting, icon: greetingIcon, dateStr } = getGreeting(settings?.displayName);
+  const { greeting } = getGreeting(settings?.displayName);
 
   // Top 3 actionable insights per Section 12
   const topInsights = insights.slice(0, 3);
@@ -155,19 +155,18 @@ export default function HomeScreen() {
 
   return (
     <ScrollScreen>
-      {/* 1. GREETING / DATE HEADER */}
+      {/* 1. GREETING / PROFILE HEADER */}
       <View style={styles.headerRow}>
         <View style={{ gap: 2 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontSize: 16 }}>{greetingIcon}</Text>
-            <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
-              {greeting}
-            </Text>
-          </View>
-          <Text style={[typography.micro, { color: colors.textTertiary }]}>{dateStr}</Text>
+          <Text style={[typography.title, { color: colors.textPrimary, fontSize: 19 }]}>
+            {greeting} 👋
+          </Text>
+          <Text style={[typography.caption, { color: colors.textSecondary, fontSize: 13 }]}>
+            Here's your financial overview
+          </Text>
         </View>
 
-        {/* Privacy & Health Score Pill */}
+        {/* Profile Avatar & Privacy / Health Score Pill */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
           <Pressable
             onPress={() => setHideBalance(!hideBalance)}
@@ -185,19 +184,17 @@ export default function HomeScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => router.push('/intelligence')}
+            onPress={() => router.push('/(tabs)/more')}
             style={[
-              styles.healthPill,
+              styles.avatarBtn,
               {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
+                backgroundColor: colors.primary,
                 borderRadius: radius.pill,
               },
             ]}
           >
-            <Text style={{ fontSize: 12 }}>⚡</Text>
-            <Text style={[typography.captionMedium, { color: colors.textPrimary, fontSize: 12 }]}>
-              {healthScore?.score ?? 85}
+            <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
+              {(settings?.displayName || 'A').slice(0, 1).toUpperCase()}
             </Text>
           </Pressable>
         </View>
@@ -619,6 +616,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+  },
+  avatarBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   healthPill: {
     flexDirection: 'row',

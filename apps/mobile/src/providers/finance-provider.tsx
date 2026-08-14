@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { getDatabase } from '../database/client';
 import { AccountRepository } from '../repositories/account-repository';
@@ -17,12 +18,18 @@ import { DebtService } from '../features/debts/services/debt-service';
 import { GoalService } from '../features/goals/services/goal-service';
 import { ForecastingService } from '../features/intelligence/services/forecasting-service';
 import { HealthService } from '../features/intelligence/services/health-service';
+import { ApiClient, createApiClient } from '@personal-finance/api-client';
+import { getAppConfig } from '@personal-finance/config';
 import { InsightsService } from '../features/intelligence/services/insights-service';
 import { RecurringRuleService } from '../features/recurring/services/recurring-rule-service';
 import { TransactionService } from '../features/transactions/services/transaction-service';
 
 type FinanceServices = {
   db: SQLiteDatabase;
+  api: ApiClient;
+  apiStatus: 'online' | 'offline' | 'checking';
+  checkApiConnection: () => Promise<boolean>;
+  syncWithApi: () => Promise<boolean>;
   accounts: AccountService;
   analytics: AnalyticsService;
   budgets: BudgetService;
@@ -44,10 +51,71 @@ const FinanceContext = createContext<FinanceServices | null>(null);
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [db, setDb] = useState<SQLiteDatabase | null>(null);
   const [nonce, setNonce] = useState(0);
+  const [apiStatus, setApiStatus] = useState<'online' | 'offline' | 'checking'>('checking');
+
+  const apiClient = useMemo(() => createApiClient({ baseUrl: getAppConfig().apiUrl }), []);
+
+  const checkApiConnection = async (): Promise<boolean> => {
+    try {
+      const res = await apiClient.health();
+      const isOnline = res.status === 'ok';
+      setApiStatus(isOnline ? 'online' : 'offline');
+      return isOnline;
+    } catch {
+      setApiStatus('offline');
+      return false;
+    }
+  };
+
+  const syncWithApi = async (): Promise<boolean> => {
+    try {
+      const isOnline = await checkApiConnection();
+      if (!isOnline) return false;
+      const res = await apiClient.sync.download();
+      if (res && res.changes && res.changes.length > 0) {
+        setNonce((n) => n + 1);
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   useEffect(() => {
-    void getDatabase().then(setDb);
+    let isMounted = true;
+
+    // Fast-path local database opening
+    void getDatabase().then((database) => {
+      if (isMounted) {
+        setDb(database);
+        // Defer cloud sync to run in background after UI is mounted
+        setTimeout(() => {
+          if (isMounted) {
+            void syncWithApi();
+          }
+        }, 600);
+      }
+    });
+
+    // Periodic background sync interval
+    const interval = setInterval(() => {
+      if (isMounted) {
+        void syncWithApi();
+      }
+    }, 60000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
+
+  // Automatic sync when local mutations occur (nonce increments)
+  useEffect(() => {
+    if (nonce > 0) {
+      void syncWithApi();
+    }
+  }, [nonce]);
 
   const value = useMemo(() => {
     if (!db) return null;
@@ -96,6 +164,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
     return {
       db,
+      api: apiClient,
+      apiStatus,
+      checkApiConnection,
+      syncWithApi,
       accounts: new AccountService(accountRepo),
       analytics: analyticsService,
       budgets: budgetService,
@@ -111,7 +183,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       refresh: () => setNonce((n) => n + 1),
       nonce,
     };
-  }, [db, nonce]);
+  }, [db, nonce, apiStatus, apiClient]);
 
   useEffect(() => {
     if (value) {
@@ -123,7 +195,21 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     }
   }, [value]);
 
-  if (!value) return null;
+  if (!value) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: '#0B0F19',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <ActivityIndicator size="large" color="#2563EB" />
+      </View>
+    );
+  }
+
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }
 

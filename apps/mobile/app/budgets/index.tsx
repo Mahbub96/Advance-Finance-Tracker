@@ -221,18 +221,38 @@ export default function BudgetsListScreen() {
                   style={{
                     flexDirection: 'row',
                     justifyContent: 'space-between',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                   }}
                 >
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text
-                      style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 16 }]}
+                  <View
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: radius.md,
+                        backgroundColor: colors.surfaceMuted,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
                     >
-                      {budget.name}
-                    </Text>
-                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                      {category?.name ?? 'All Categories'} · {budget.startDate} to {budget.endDate}
-                    </Text>
+                      <Text style={{ fontSize: 18 }}>{category?.icon || '🎯'}</Text>
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text
+                        style={[
+                          typography.sectionTitle,
+                          { color: colors.textPrimary, fontSize: 16 },
+                        ]}
+                      >
+                        {budget.name}
+                      </Text>
+                      <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                        {category?.name ?? 'All Categories'} · {budget.startDate} to{' '}
+                        {budget.endDate}
+                      </Text>
+                    </View>
                   </View>
                   <Badge label={label} variant={variant} dot />
                 </View>

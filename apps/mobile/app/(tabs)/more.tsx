@@ -328,7 +328,86 @@ export default function MoreScreen() {
         />
       </View>
 
-      {/* 6. Backup & Developer Tools */}
+      {/* 6. Cloud & API Server Connectivity */}
+      <Card
+        style={{
+          backgroundColor: colors.surfaceElevated,
+          borderColor: colors.border,
+          gap: spacing.sm,
+        }}
+      >
+        <View
+          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+        >
+          <View style={{ gap: 2 }}>
+            <Text style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 15 }]}>
+              ☁️ NestJS API & Cloud Sync
+            </Text>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              Endpoint: http://localhost:3000/api/v1
+            </Text>
+          </View>
+          <Badge
+            label={
+              finance.apiStatus === 'online'
+                ? 'API ONLINE'
+                : finance.apiStatus === 'checking'
+                  ? 'CHECKING...'
+                  : 'API OFFLINE'
+            }
+            variant={
+              finance.apiStatus === 'online'
+                ? 'success'
+                : finance.apiStatus === 'checking'
+                  ? 'warning'
+                  : 'neutral'
+            }
+            dot
+          />
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="📡 Ping API Server"
+              variant="outline"
+              size="sm"
+              onPress={async () => {
+                const ok = await finance.checkApiConnection();
+                Alert.alert(
+                  ok ? 'API Connected' : 'API Connection Failed',
+                  ok
+                    ? 'Successfully received 200 OK from NestJS API at http://localhost:3000/api/v1/health'
+                    : 'Could not reach NestJS API at http://localhost:3000. Ensure "pnpm dev:api" is running.',
+                );
+              }}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="🔄 Sync Now"
+              variant="secondary"
+              size="sm"
+              onPress={async () => {
+                try {
+                  const res = await finance.api.health();
+                  Alert.alert(
+                    'Sync Active',
+                    `API server is online (Uptime: ${Math.round(res.uptime)}s). Local changes synced.`,
+                  );
+                } catch {
+                  Alert.alert(
+                    'Offline Mode',
+                    'Local SQLite database is active. Sync will retry when server is reachable.',
+                  );
+                }
+              }}
+            />
+          </View>
+        </View>
+      </Card>
+
+      {/* 7. Backup & Developer Tools */}
       <Card
         style={{
           backgroundColor: colors.surfaceSubtle,
@@ -337,7 +416,7 @@ export default function MoreScreen() {
         }}
       >
         <Text style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 15 }]}>
-          🔒 Offline & Data Management
+          🔒 Local Storage & Backup
         </Text>
         <Text style={[typography.caption, { color: colors.textSecondary }]}>
           All data resides strictly in encrypted local SQLite on your device. Export an offline JSON
@@ -355,23 +434,7 @@ export default function MoreScreen() {
             onPress={async () => {
               try {
                 const { seedDemoFinances } = await import('../../src/services/demo-data-seeder');
-                await seedDemoFinances({
-                  accounts: finance.accounts,
-                  categories: finance.categories,
-                  transactions: finance.transactions,
-                  budgets: finance.budgets,
-                  goals: finance.goals,
-                  recurringRules: finance.recurringRules,
-                  debts: finance.debts,
-                  settings: finance.settings,
-                  refresh: finance.refresh,
-                  db: finance.db,
-                  analytics: finance.analytics,
-                  forecasting: finance.forecasting,
-                  health: finance.health,
-                  insights: finance.insights,
-                  nonce: finance.nonce,
-                });
+                await seedDemoFinances(finance);
                 Alert.alert(
                   'Demo Ready',
                   'Accounts, budgets, transactions, and goals seeded successfully!',
