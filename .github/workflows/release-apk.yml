@@ -1,0 +1,111 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v0.0.1)'
+        required: true
+        default: 'v0.0.1'
+
+jobs:
+  build-apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set version from tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.ref_name }}"
+          fi
+          # Strip leading 'v' for semver
+          SEMVER="${VERSION#v}"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "SEMVER=${SEMVER}" >> $GITHUB_ENV
+          echo "Building version: ${SEMVER}"
+
+      - name: Generate native Android project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --clean --no-install
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://api.personalfinance.app' }}
+          EXPO_PUBLIC_APP_ENV: production
+
+      - name: Make Gradle wrapper executable
+        working-directory: apps/mobile/android
+        run: chmod +x gradlew
+
+      - name: Build release APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4g"
+
+      - name: Rename APK
+        run: |
+          APK_PATH=$(find apps/mobile/android/app/build/outputs/apk/release -name "*.apk" | head -1)
+          cp "$APK_PATH" "personal-finance-${SEMVER}.apk"
+          echo "APK_FILE=personal-finance-${SEMVER}.apk" >> $GITHUB_ENV
+
+      - name: Generate release notes
+        run: |
+          cat <<'EOF' > release_notes.md
+          ## 📱 Personal Finance Tracker ${{ env.VERSION }}
+
+          ### What's New
+          - 🏦 Offline-first finance tracking with local SQLite
+          - 💰 Accounts, transactions, budgets & categories
+          - 🔄 Premium pull-to-refresh with elastic physics
+          - 📊 Analytics & reporting
+          - 🌙 Automatic dark mode support
+          - 🔐 Secure authentication flow
+
+          ### Installation
+          1. Download the `.apk` file below
+          2. Enable "Install from Unknown Sources" on your Android device
+          3. Open the downloaded APK to install
+
+          > **Note:** This is a debug-signed APK for testing. Production releases will be signed with a release keystore.
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: "Personal Finance ${{ env.VERSION }}"
+          body_path: release_notes.md
+          draft: false
+          prerelease: true
+          files: ${{ env.APK_FILE }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
