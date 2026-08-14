@@ -6,6 +6,7 @@ import { Button } from '../../src/components/Button';
 import { ScrollScreen } from '../../src/components/Screen';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
+import { getAppConfig } from '@personal-finance/config';
 import { useTokens } from '../../src/theme/tokens';
 import { useThemeContext, type ThemeMode } from '../../src/theme/theme-context';
 
@@ -351,7 +352,7 @@ export default function MoreScreen() {
               ☁️ NestJS API & Cloud Sync
             </Text>
             <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              Endpoint: http://localhost:3000/api/v1
+              Endpoint: {getAppConfig().apiUrl}
             </Text>
           </View>
           <Badge
@@ -384,8 +385,8 @@ export default function MoreScreen() {
                 Alert.alert(
                   ok ? 'API Connected' : 'API Connection Failed',
                   ok
-                    ? 'Successfully received 200 OK from NestJS API at http://localhost:3000/api/v1/health'
-                    : 'Could not reach NestJS API at http://localhost:3000. Ensure "pnpm dev:api" is running.',
+                    ? `Successfully reached API at ${getAppConfig().apiUrl}/health`
+                    : `Could not reach API at ${getAppConfig().apiUrl}. Ensure the server is online.`,
                 );
               }}
             />

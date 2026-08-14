@@ -59,7 +59,7 @@ jobs:
         working-directory: apps/mobile
         run: npx expo prebuild --platform android --clean --no-install
         env:
-          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://api.personalfinance.app' }}
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'http://140.245.217.109:5500/api/v1' }}
           EXPO_PUBLIC_APP_ENV: production
 
       - name: Make Gradle wrapper executable

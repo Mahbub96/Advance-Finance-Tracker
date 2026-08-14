@@ -1,6 +1,6 @@
-export const DEFAULT_API_PORT = 3000;
-export const DEFAULT_API_HOST = '0.0.0.0';
-export const DEFAULT_API_URL = 'http://localhost:3000/api/v1';
+export const DEFAULT_API_PORT = 5500;
+export const DEFAULT_API_HOST = '140.245.217.109';
+export const DEFAULT_API_URL = 'http://140.245.217.109:5500/api/v1';
 
 export interface AppEnvironment {
   nodeEnv: 'development' | 'production' | 'test';
@@ -14,7 +14,9 @@ export function getAppConfig(): AppEnvironment {
   const apiUrl =
     process.env.EXPO_PUBLIC_API_URL ??
     process.env.API_URL ??
-    `http://${host === '0.0.0.0' ? 'localhost' : host}:${port}/api/v1`;
+    (process.env.API_PORT || process.env.API_HOST
+      ? `http://${host === '0.0.0.0' ? '140.245.217.109' : host}:${port}/api/v1`
+      : DEFAULT_API_URL);
 
   return {
     nodeEnv: (process.env.NODE_ENV as 'development' | 'production' | 'test') ?? 'development',

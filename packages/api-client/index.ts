@@ -35,8 +35,8 @@ export class ApiClient {
   private getAuthToken?: () => Promise<string | null> | string | null;
 
   constructor(config: ApiClientConfig = {}) {
-    // Default fallback to local API dev server
-    this.baseUrl = config.baseUrl?.replace(/\/$/, '') || 'http://localhost:3000/api/v1';
+    // Default fallback to remote API server
+    this.baseUrl = config.baseUrl?.replace(/\/$/, '') || 'http://140.245.217.109:5500/api/v1';
     this.timeoutMs = config.timeoutMs ?? 3000;
     this.getAuthToken = config.getAuthToken;
   }
