@@ -8,7 +8,12 @@
 **Platform:** Android-first, iOS-ready  
 **Framework:** React Native + Expo + TypeScript  
 **Navigation:** Expo Router  
-**Primary UX Principle:** Advanced capability with minimal everyday friction
+**Primary UX Principle:** Advanced capability with minimal everyday friction  
+**Reference Mockups:**
+
+- **High-Fidelity Concept Showcase:** ![High-Fidelity Concept Showcase](./assets/a_clean_high_fidelity_ui_ux_concept_showcase_imag.png)
+- **Layer 1 (Primary Design / Core UI Flows):** ![Layer 1 Reference UI](./assets/reference-ui-layer-1.jpg)
+- **Layer 2 (Secondary Design / Widgets, Quick Actions & Secondary Components):** ![Layer 2 Reference UI](./assets/reference-ui-layer-2.jpg)
 
 ---
 

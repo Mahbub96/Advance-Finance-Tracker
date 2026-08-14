@@ -1,6 +1,7 @@
-import { formatMoneyDisplay } from '@personal-finance/types';
+import { formatMoneyDisplay, moneyString, parseMoney } from '@personal-finance/types';
 import { useRouter } from 'expo-router';
-import { Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Text, View, Pressable } from 'react-native';
 import { Badge, type BadgeVariant } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
@@ -8,6 +9,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { ProgressBar } from '../../src/components/ProgressBar';
 import { ScrollScreen } from '../../src/components/Screen';
 import { useBudgets } from '../../src/hooks/use-budgets';
+import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
 
@@ -17,11 +19,39 @@ function getRiskBadge(risk: string): { label: string; variant: BadgeVariant } {
   return { label: 'On Track', variant: 'success' };
 }
 
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 export default function BudgetsListScreen() {
-  const { colors, typography, spacing } = useTokens();
+  const { colors, typography, spacing, radius } = useTokens();
   const { budgets, reload } = useBudgets();
   const { budgets: budgetService, refresh } = useFinance();
+  const { settings } = useSettings();
   const router = useRouter();
+
+  const [currentMonthIndex, setCurrentMonthIndex] = useState(new Date().getMonth());
+  const currentYear = new Date().getFullYear();
+  const currency = settings?.baseCurrency ?? 'BDT';
+
+  const handlePrevMonth = () => {
+    setCurrentMonthIndex((prev) => (prev === 0 ? 11 : prev - 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonthIndex((prev) => (prev === 11 ? 0 : prev + 1));
+  };
 
   const handleArchive = async (id: string) => {
     await budgetService.archive(id);
@@ -35,9 +65,36 @@ export default function BudgetsListScreen() {
     await reload();
   };
 
+  // Aggregated totals across all active budgets
+  const summary = useMemo(() => {
+    if (budgets.length === 0) return null;
+    let totalTarget = parseMoney('0');
+    let totalSpent = parseMoney('0');
+
+    for (const b of budgets) {
+      totalTarget = totalTarget.plus(parseMoney(b.budget.amount));
+      totalSpent = totalSpent.plus(parseMoney(b.spent));
+    }
+
+    const targetStr = moneyString(totalTarget);
+    const spentStr = moneyString(totalSpent);
+    const remaining = moneyString(totalTarget.minus(totalSpent));
+    const percent = totalTarget.gt(0)
+      ? Math.min(100, Math.round((totalSpent.toNumber() / totalTarget.toNumber()) * 100))
+      : 0;
+
+    return {
+      target: targetStr,
+      spent: spentStr,
+      remaining: parseFloat(remaining) >= 0 ? remaining : '0.00',
+      percent,
+      isExceeded: totalSpent.gt(totalTarget),
+    };
+  }, [budgets]);
+
   return (
     <ScrollScreen>
-      {/* Header */}
+      {/* Header & Month Navigation */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <View style={{ gap: 2 }}>
           <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
@@ -45,10 +102,92 @@ export default function BudgetsListScreen() {
           </Text>
           <Text style={[typography.title, { color: colors.textPrimary }]}>Budgets</Text>
         </View>
-        <Button label="+ New Budget" size="sm" onPress={() => router.push('/budgets/new')} />
+        <Button label="+ Create Budget" size="sm" onPress={() => router.push('/budgets/new')} />
       </View>
 
-      {/* Budget List */}
+      {/* Month Navigator Bar */}
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          borderWidth: 1,
+          borderRadius: radius.md,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+        }}
+      >
+        <Pressable onPress={handlePrevMonth} style={{ padding: 4 }}>
+          <Text style={{ fontSize: 16, color: colors.primary, fontWeight: '700' }}>‹</Text>
+        </Pressable>
+        <Text style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 15 }]}>
+          {MONTHS[currentMonthIndex]} {currentYear}
+        </Text>
+        <Pressable onPress={handleNextMonth} style={{ padding: 4 }}>
+          <Text style={{ fontSize: 16, color: colors.primary, fontWeight: '700' }}>›</Text>
+        </Pressable>
+      </View>
+
+      {/* Overall Month Budget Summary Hero Card */}
+      {summary && (
+        <Card
+          style={{
+            backgroundColor: colors.surfaceElevated,
+            borderColor: colors.border,
+            gap: spacing.md,
+          }}
+        >
+          <View
+            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+          >
+            <View style={{ gap: 2 }}>
+              <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
+                Total Monthly Budget
+              </Text>
+              <Text style={[typography.numericLarge, { color: colors.textPrimary, fontSize: 22 }]}>
+                {formatMoneyDisplay(summary.spent, currency)} of{' '}
+                {formatMoneyDisplay(summary.target, currency)}
+              </Text>
+            </View>
+            <Badge
+              label={`${summary.percent}%`}
+              variant={
+                summary.percent > 90 ? 'danger' : summary.percent > 75 ? 'warning' : 'success'
+              }
+            />
+          </View>
+
+          <ProgressBar
+            progressPercent={summary.percent}
+            color={
+              summary.percent > 90
+                ? colors.danger
+                : summary.percent > 75
+                  ? colors.warning
+                  : colors.income
+            }
+            height={8}
+          />
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              {summary.isExceeded ? 'Over limit' : 'Remaining to spend:'}
+            </Text>
+            <Text
+              style={[
+                typography.captionMedium,
+                { color: summary.isExceeded ? colors.danger : colors.income },
+              ]}
+            >
+              {formatMoneyDisplay(summary.remaining, currency)}
+            </Text>
+          </View>
+        </Card>
+      )}
+
+      {/* Category Budget List */}
       <View style={{ gap: spacing.md }}>
         {budgets.length === 0 ? (
           <EmptyState
@@ -70,7 +209,14 @@ export default function BudgetsListScreen() {
                   : colors.income;
 
             return (
-              <Card key={budget.id} style={{ gap: spacing.md }}>
+              <Card
+                key={budget.id}
+                style={{
+                  gap: spacing.md,
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                }}
+              >
                 <View
                   style={{
                     flexDirection: 'row',

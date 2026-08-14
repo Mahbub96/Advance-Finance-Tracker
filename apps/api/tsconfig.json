@@ -4,11 +4,13 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "dist",
-    "rootDir": "src",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "noEmit": true,
-    "types": ["node", "jest"]
+    "types": ["node", "jest"],
+    "paths": {
+      "@personal-finance/types": ["../../packages/types/index.ts"]
+    }
   },
   "include": ["src/**/*.ts"]
 }

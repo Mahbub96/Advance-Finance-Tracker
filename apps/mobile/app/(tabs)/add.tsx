@@ -16,6 +16,23 @@ import { useTokens } from '../../src/theme/tokens';
 
 type Mode = 'EXPENSE' | 'INCOME' | 'TRANSFER';
 
+function getAccountIcon(type: string): string {
+  switch (type) {
+    case 'CASH':
+      return '💵';
+    case 'BANK':
+      return '🏦';
+    case 'WALLET':
+      return '📱';
+    case 'SAVINGS':
+      return '🐖';
+    case 'CREDIT':
+      return '💳';
+    default:
+      return '📂';
+  }
+}
+
 export default function AddScreen() {
   const { colors, spacing, typography, radius } = useTokens();
   const { accounts } = useAccounts();
@@ -28,6 +45,7 @@ export default function AddScreen() {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [merchantName, setMerchantName] = useState('');
+  const [date, setDate] = useState(todayIsoDate());
   const [accountId, setAccountId] = useState<string | undefined>();
   const [destinationId, setDestinationId] = useState<string | undefined>();
   const [categoryId, setCategoryId] = useState<string | undefined>();
@@ -73,7 +91,7 @@ export default function AddScreen() {
           sourceAccountId: selectedAccount,
           destinationAccountId: selectedDestination,
           amount,
-          transactionDate: todayIsoDate(),
+          transactionDate: date || todayIsoDate(),
           note: note.trim() || undefined,
         });
       } else {
@@ -81,7 +99,7 @@ export default function AddScreen() {
           type: mode === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE,
           accountId: selectedAccount,
           amount,
-          transactionDate: todayIsoDate(),
+          transactionDate: date || todayIsoDate(),
           categoryId: selectedCategory ?? null,
           merchantName: merchantName.trim() || undefined,
           note: note.trim() || undefined,
@@ -116,7 +134,14 @@ export default function AddScreen() {
       />
 
       {/* Amount Hero Input */}
-      <Card style={{ backgroundColor: colors.surfaceElevated, gap: spacing.xs }}>
+      <Card
+        style={{
+          backgroundColor: colors.surfaceElevated,
+          borderColor: colors.border,
+          gap: spacing.xs,
+          paddingVertical: spacing.lg,
+        }}
+      >
         <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>Amount</Text>
         <Input
           label=""
@@ -125,18 +150,19 @@ export default function AddScreen() {
           onChangeText={setAmount}
           keyboardType="decimal-pad"
           prefix={currency}
-          style={{ fontSize: 24, fontWeight: '700' }}
+          style={{ fontSize: 30, fontWeight: '700' }}
         />
       </Card>
 
-      {/* Account Selection */}
-      <View style={{ gap: spacing.sm }}>
-        <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>
+      {/* Account Selection Grid */}
+      <View style={{ gap: spacing.xs }}>
+        <Text style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 15 }]}>
           {mode === 'TRANSFER' ? 'From Account' : 'Account'}
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
           {accounts.map((acc) => {
             const isSelected = selectedAccount === acc.id;
+            const icon = getAccountIcon(acc.type);
             return (
               <Pressable
                 key={acc.id}
@@ -150,11 +176,12 @@ export default function AddScreen() {
                   },
                 ]}
               >
+                <Text style={{ fontSize: 16 }}>{icon}</Text>
                 <Text
                   style={{
                     color: isSelected ? colors.primaryForeground : colors.textPrimary,
                     fontWeight: isSelected ? '600' : '400',
-                    fontSize: 14,
+                    fontSize: 13,
                   }}
                 >
                   {acc.name}
@@ -165,15 +192,18 @@ export default function AddScreen() {
         </View>
       </View>
 
-      {/* Transfer Destination or Category Selection */}
+      {/* Destination or Category Selection */}
       {mode === 'TRANSFER' ? (
-        <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>To Account</Text>
+        <View style={{ gap: spacing.xs }}>
+          <Text style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 15 }]}>
+            To Account
+          </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
             {accounts
               .filter((acc) => acc.id !== selectedAccount)
               .map((acc) => {
                 const isSelected = selectedDestination === acc.id;
+                const icon = getAccountIcon(acc.type);
                 return (
                   <Pressable
                     key={acc.id}
@@ -187,11 +217,12 @@ export default function AddScreen() {
                       },
                     ]}
                   >
+                    <Text style={{ fontSize: 16 }}>{icon}</Text>
                     <Text
                       style={{
                         color: isSelected ? colors.primaryForeground : colors.textPrimary,
                         fontWeight: isSelected ? '600' : '400',
-                        fontSize: 14,
+                        fontSize: 13,
                       }}
                     >
                       {acc.name}
@@ -202,8 +233,10 @@ export default function AddScreen() {
           </View>
         </View>
       ) : (
-        <View style={{ gap: spacing.sm }}>
-          <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>Category</Text>
+        <View style={{ gap: spacing.xs }}>
+          <Text style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 15 }]}>
+            Category
+          </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
             {categoryOptions.map((cat) => {
               const isSelected = selectedCategory === cat.id;
@@ -220,11 +253,12 @@ export default function AddScreen() {
                     },
                   ]}
                 >
+                  <Text style={{ fontSize: 15 }}>{cat.icon || '🏷️'}</Text>
                   <Text
                     style={{
                       color: isSelected ? colors.primaryForeground : colors.textPrimary,
                       fontWeight: isSelected ? '600' : '400',
-                      fontSize: 14,
+                      fontSize: 13,
                     }}
                   >
                     {cat.name}
@@ -236,11 +270,19 @@ export default function AddScreen() {
         </View>
       )}
 
+      {/* Date Input */}
+      <Input
+        label="Transaction Date"
+        value={date}
+        onChangeText={setDate}
+        placeholder="YYYY-MM-DD"
+      />
+
       {/* Merchant / Description */}
       {mode !== 'TRANSFER' && (
         <Input
-          label="Merchant or Payee (Optional)"
-          placeholder="e.g. Star Kebabs, Netflix, Supermarket"
+          label="Merchant / Payee (Optional)"
+          placeholder="e.g. Star Kebabs, Netflix, Meena Bazar"
           value={merchantName}
           onChangeText={setMerchantName}
         />
@@ -248,7 +290,7 @@ export default function AddScreen() {
 
       <Input
         label="Note (Optional)"
-        placeholder="Additional context..."
+        placeholder="Dinner with family, groceries..."
         value={note}
         onChangeText={setNote}
       />
@@ -268,7 +310,11 @@ export default function AddScreen() {
 
       {/* Submit Button */}
       <Button
-        label={busy ? 'Saving...' : `Save ${mode.toLowerCase()}`}
+        label={
+          busy
+            ? 'Saving...'
+            : `Save ${mode === 'EXPENSE' ? 'Expense' : mode === 'INCOME' ? 'Income' : 'Transfer'}`
+        }
         loading={busy}
         onPress={() => void handleSave()}
         size="lg"
@@ -279,10 +325,11 @@ export default function AddScreen() {
 
 const styles = StyleSheet.create({
   chip: {
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderWidth: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 13,
+    borderWidth: 1,
   },
 });

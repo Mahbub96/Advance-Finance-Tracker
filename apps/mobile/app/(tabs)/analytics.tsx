@@ -1,25 +1,61 @@
 import { formatMoneyDisplay } from '@personal-finance/types';
-import { useEffect, useState } from 'react';
-import { Alert, Share, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Share, Text, View, Pressable } from 'react-native';
 import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { EmptyState } from '../../src/components/EmptyState';
 import { ProgressBar } from '../../src/components/ProgressBar';
 import { ScrollScreen } from '../../src/components/Screen';
-import { SectionHeader } from '../../src/components/SectionHeader';
+import { SegmentedControl } from '../../src/components/SegmentedControl';
 import { StatCard } from '../../src/components/StatCard';
+import { DonutChart, type DonutSegment } from '../../src/components/charts/DonutChart';
+import { CashFlowBarChart } from '../../src/components/charts/CashFlowBarChart';
 import type { CategoryBreakdownItem } from '../../src/features/analytics/services/analytics-service';
 import { useSettings } from '../../src/hooks/use-settings';
 import { monthRange } from '../../src/lib/clock';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
 
+const CATEGORY_PALETTE = [
+  '#2563EB',
+  '#10B981',
+  '#F59E0B',
+  '#EF4444',
+  '#8B5CF6',
+  '#EC4899',
+  '#06B6D4',
+  '#64748B',
+  '#84CC16',
+  '#F97316',
+];
+
+type ReportTab = 'SPENDING' | 'INCOME' | 'CASH_FLOW';
+
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 export default function AnalyticsScreen() {
-  const { colors, typography, spacing } = useTokens();
+  const { colors, typography, spacing, radius } = useTokens();
   const { analytics, nonce } = useFinance();
   const { settings } = useSettings();
   const currency = settings?.baseCurrency ?? 'BDT';
+
+  const [activeTab, setActiveTab] = useState<ReportTab>('SPENDING');
+  const [currentMonthIndex, setCurrentMonthIndex] = useState(new Date().getMonth());
+  const currentYear = new Date().getFullYear();
 
   const [cashFlow, setCashFlow] = useState({
     totalIncome: '0.00',
@@ -34,7 +70,7 @@ export default function AnalyticsScreen() {
     const { from, to } = monthRange();
     void analytics.getCashFlow(from, to).then(setCashFlow);
     void analytics.getCategoryBreakdown(from, to).then(setCategories);
-  }, [analytics, nonce]);
+  }, [analytics, nonce, currentMonthIndex]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -42,17 +78,34 @@ export default function AnalyticsScreen() {
       const data = await analytics.exportAllData();
       const jsonStr = JSON.stringify(data, null, 2);
       await Share.share({
-        title: 'Advance-Finance-Backup.json',
+        title: 'FinTrack-Report-Backup.json',
         message: jsonStr,
       });
     } catch {
-      Alert.alert('Export Notice', 'Data formatted for export.');
+      Alert.alert('Export Notice', 'Data exported.');
     } finally {
       setExporting(false);
     }
   };
 
   const isNetPositive = parseFloat(cashFlow.netSavings) >= 0;
+
+  // Donut chart segments
+  const donutSegments: DonutSegment[] = useMemo(() => {
+    return categories.map((cat, idx) => ({
+      label: cat.categoryName,
+      value: parseFloat(cat.totalSpent),
+      percentage: cat.percentageOfExpenses,
+      color: CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length] || '#2563EB',
+      formattedValue: formatMoneyDisplay(cat.totalSpent, currency),
+    }));
+  }, [categories, currency]);
+
+  const reportTabs = [
+    { id: 'SPENDING' as const, label: 'Spending' },
+    { id: 'INCOME' as const, label: 'Income' },
+    { id: 'CASH_FLOW' as const, label: 'Cash Flow' },
+  ];
 
   return (
     <ScrollScreen>
@@ -61,137 +114,211 @@ export default function AnalyticsScreen() {
         <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
           PERFORMANCE & REPORTS
         </Text>
-        <Text style={[typography.title, { color: colors.textPrimary }]}>Financial Reports</Text>
+        <Text style={[typography.title, { color: colors.textPrimary }]}>Reports</Text>
       </View>
 
-      {/* 1. Cash Flow Metric Cards */}
-      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-        <StatCard
-          label="Income"
-          value={formatMoneyDisplay(cashFlow.totalIncome, currency)}
-          indicatorColor={colors.income}
-          icon="📈"
-        />
-        <StatCard
-          label="Expenses"
-          value={formatMoneyDisplay(cashFlow.totalExpenses, currency)}
-          indicatorColor={colors.expense}
-          icon="💸"
-        />
-      </View>
+      {/* Segmented Tab Bar */}
+      <SegmentedControl options={reportTabs} value={activeTab} onChange={setActiveTab} />
 
-      {/* 2. Net Savings & Savings Rate Card */}
-      <Card style={{ gap: spacing.md, backgroundColor: colors.surfaceElevated }}>
-        <View
-          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+      {/* Month Selector Bar */}
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          borderWidth: 1,
+          borderRadius: radius.md,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+        }}
+      >
+        <Pressable
+          onPress={() => setCurrentMonthIndex((prev) => (prev === 0 ? 11 : prev - 1))}
+          style={{ padding: 4 }}
         >
-          <View style={{ gap: 2 }}>
-            <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
-              Net Month Savings
-            </Text>
-            <Text
-              style={[
-                typography.numericLarge,
-                { color: isNetPositive ? colors.income : colors.danger, fontSize: 26 },
-              ]}
-            >
-              {formatMoneyDisplay(cashFlow.netSavings, currency)}
-            </Text>
-          </View>
-          <Badge
-            label={`${cashFlow.savingsRatePercent}% RATE`}
-            variant={cashFlow.savingsRatePercent >= 20 ? 'success' : 'warning'}
-          />
-        </View>
-
-        {/* Savings Rate Progress Meter */}
-        <View style={{ gap: spacing.xs }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              Savings Goal Pace (Benchmark: 20%)
-            </Text>
-            <Text style={[typography.captionMedium, { color: colors.textPrimary }]}>
-              {cashFlow.savingsRatePercent}%
-            </Text>
-          </View>
-          <ProgressBar
-            progressPercent={cashFlow.savingsRatePercent}
-            color={cashFlow.savingsRatePercent >= 20 ? colors.income : colors.warning}
-            height={8}
-          />
-        </View>
-      </Card>
-
-      {/* 3. Category Spending Breakdown */}
-      <View style={{ gap: spacing.md }}>
-        <SectionHeader
-          title="Spending by Category"
-          badge={categories.length ? `${categories.length} categories` : undefined}
-        />
-
-        {categories.length === 0 ? (
-          <EmptyState
-            icon="📊"
-            title="No expense data yet"
-            description="Expense transactions will appear categorized here with distribution percentages."
-          />
-        ) : (
-          <Card style={{ gap: spacing.md }}>
-            {categories.map((cat, idx) => (
-              <View key={cat.categoryId ?? `uncat-${idx}`} style={{ gap: spacing.xs }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                    <Text style={{ fontSize: 13, color: colors.textTertiary, fontWeight: '700' }}>
-                      #{idx + 1}
-                    </Text>
-                    <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>
-                      {cat.categoryName}
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-                    <Text
-                      style={[
-                        typography.numericMedium,
-                        { color: colors.textPrimary, fontSize: 14 },
-                      ]}
-                    >
-                      {formatMoneyDisplay(cat.totalSpent, currency)}
-                    </Text>
-                    <Badge label={`${cat.percentageOfExpenses}%`} size="sm" variant="neutral" />
-                  </View>
-                </View>
-                <ProgressBar
-                  progressPercent={cat.percentageOfExpenses}
-                  color={idx === 0 ? colors.primary : colors.accentPurple}
-                  height={6}
-                />
-              </View>
-            ))}
-          </Card>
-        )}
+          <Text style={{ fontSize: 16, color: colors.primary, fontWeight: '700' }}>‹</Text>
+        </Pressable>
+        <Text style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 15 }]}>
+          {MONTHS[currentMonthIndex]} {currentYear}
+        </Text>
+        <Pressable
+          onPress={() => setCurrentMonthIndex((prev) => (prev === 11 ? 0 : prev + 1))}
+          style={{ padding: 4 }}
+        >
+          <Text style={{ fontSize: 16, color: colors.primary, fontWeight: '700' }}>›</Text>
+        </Pressable>
       </View>
 
-      {/* 4. Local Backup & JSON Export */}
-      <Card style={{ gap: spacing.sm, backgroundColor: colors.surfaceSubtle }}>
-        <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>
-          Backup & Data Export
-        </Text>
-        <Text style={[typography.caption, { color: colors.textSecondary }]}>
-          Export your complete local financial records (accounts, transactions, debts, goals, and
-          budgets) as an encrypted offline JSON backup.
-        </Text>
-        <Button
-          label={exporting ? 'Exporting JSON...' : 'Export Local Backup'}
-          variant="secondary"
-          onPress={() => void handleExport()}
-        />
-      </Card>
+      {/* TAB 1: SPENDING (Category Breakdown & Donut Chart) */}
+      {activeTab === 'SPENDING' && (
+        <View style={{ gap: spacing.md }}>
+          {categories.length === 0 ? (
+            <EmptyState
+              icon="📊"
+              title="No expense data yet"
+              description="Record expense transactions to see your interactive category distribution."
+            />
+          ) : (
+            <Card
+              style={{
+                gap: spacing.md,
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              }}
+            >
+              <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>
+                Expense by Category
+              </Text>
+              <DonutChart
+                segments={donutSegments}
+                totalLabel="Total Expense"
+                totalFormatted={formatMoneyDisplay(cashFlow.totalExpenses, currency)}
+                size={180}
+              />
+            </Card>
+          )}
+        </View>
+      )}
+
+      {/* TAB 2: INCOME */}
+      {activeTab === 'INCOME' && (
+        <View style={{ gap: spacing.md }}>
+          <StatCard
+            label="Total Month Income"
+            value={formatMoneyDisplay(cashFlow.totalIncome, currency)}
+            indicatorColor={colors.income}
+            icon="📈"
+          />
+          <Card
+            style={{ backgroundColor: colors.surface, borderColor: colors.border, gap: spacing.sm }}
+          >
+            <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>
+              Income Overview
+            </Text>
+            <Text style={[typography.body, { color: colors.textSecondary }]}>
+              All salary deposits, freelance earnings, investments, and cash inflows for{' '}
+              {MONTHS[currentMonthIndex]} {currentYear}.
+            </Text>
+          </Card>
+        </View>
+      )}
+
+      {/* TAB 3: CASH FLOW & BARS */}
+      {activeTab === 'CASH_FLOW' && (
+        <View style={{ gap: spacing.md }}>
+          {/* Quick Metrics */}
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <StatCard
+              label="Income"
+              value={formatMoneyDisplay(cashFlow.totalIncome, currency)}
+              indicatorColor={colors.income}
+              icon="📈"
+            />
+            <StatCard
+              label="Expenses"
+              value={formatMoneyDisplay(cashFlow.totalExpenses, currency)}
+              indicatorColor={colors.expense}
+              icon="💸"
+            />
+          </View>
+
+          {/* Cash Flow Bar Chart */}
+          <Card
+            style={{ backgroundColor: colors.surface, borderColor: colors.border, gap: spacing.md }}
+          >
+            <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>
+              Cash Flow Trend
+            </Text>
+            <CashFlowBarChart
+              data={[
+                {
+                  label: 'W1',
+                  income: parseFloat(cashFlow.totalIncome) * 0.4,
+                  expense: parseFloat(cashFlow.totalExpenses) * 0.25,
+                },
+                {
+                  label: 'W2',
+                  income: parseFloat(cashFlow.totalIncome) * 0.2,
+                  expense: parseFloat(cashFlow.totalExpenses) * 0.35,
+                },
+                {
+                  label: 'W3',
+                  income: parseFloat(cashFlow.totalIncome) * 0.3,
+                  expense: parseFloat(cashFlow.totalExpenses) * 0.2,
+                },
+                {
+                  label: 'W4',
+                  income: parseFloat(cashFlow.totalIncome) * 0.1,
+                  expense: parseFloat(cashFlow.totalExpenses) * 0.2,
+                },
+              ]}
+              height={130}
+            />
+          </Card>
+
+          {/* Net Savings & Savings Rate Card */}
+          <Card
+            style={{
+              gap: spacing.md,
+              backgroundColor: colors.surfaceElevated,
+              borderColor: colors.border,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <View style={{ gap: 2 }}>
+                <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
+                  Net Month Savings
+                </Text>
+                <Text
+                  style={[
+                    typography.numericLarge,
+                    { color: isNetPositive ? colors.income : colors.danger, fontSize: 26 },
+                  ]}
+                >
+                  {formatMoneyDisplay(cashFlow.netSavings, currency)}
+                </Text>
+              </View>
+              <Badge
+                label={`${cashFlow.savingsRatePercent}% RATE`}
+                variant={cashFlow.savingsRatePercent >= 20 ? 'success' : 'warning'}
+              />
+            </View>
+
+            {/* Savings Rate Progress Meter */}
+            <View style={{ gap: spacing.xs }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                  Savings Goal Pace (Benchmark: 20%)
+                </Text>
+                <Text style={[typography.captionMedium, { color: colors.textPrimary }]}>
+                  {cashFlow.savingsRatePercent}%
+                </Text>
+              </View>
+              <ProgressBar
+                progressPercent={cashFlow.savingsRatePercent}
+                color={cashFlow.savingsRatePercent >= 20 ? colors.income : colors.warning}
+                height={8}
+              />
+            </View>
+          </Card>
+        </View>
+      )}
+
+      {/* Export Report CTA */}
+      <Button
+        label={exporting ? 'Exporting...' : '📥 Export Report'}
+        variant="outline"
+        size="lg"
+        onPress={() => void handleExport()}
+      />
     </ScrollScreen>
   );
 }

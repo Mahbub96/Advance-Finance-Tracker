@@ -408,7 +408,8 @@ personal-finance/
 │   │   ├── FINANCIAL_GOALS.md
 │   │   ├── REPORTING.md
 │   │   ├── NOTIFICATIONS.md
-│   │   └── RECURRING_TRANSACTIONS.md
+│   │   ├── RECURRING_TRANSACTIONS.md
+│   │   └── MEDIA_FILES.md
 │   │
 │   ├── engineering/
 │   │   ├── DEVELOPMENT_GUIDELINES.md
@@ -775,6 +776,7 @@ FINANCIAL_GOALS.md
 REPORTING.md
 NOTIFICATIONS.md
 RECURRING_TRANSACTIONS.md
+MEDIA_FILES.md
 ```
 
 Each document defines the complete behavior of its respective module.

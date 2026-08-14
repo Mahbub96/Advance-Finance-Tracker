@@ -1,7 +1,7 @@
 import { formatMoneyDisplay } from '@personal-finance/types';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, Text, View, StyleSheet } from 'react-native';
 import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
@@ -14,6 +14,19 @@ import { useAccounts } from '../../src/hooks/use-accounts';
 import { useGoals } from '../../src/hooks/use-goals';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
+
+function getGoalIcon(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('emergency') || n.includes('safety') || n.includes('shield')) return '🛡️';
+  if (n.includes('laptop') || n.includes('tech') || n.includes('phone') || n.includes('mac'))
+    return '💻';
+  if (n.includes('travel') || n.includes('vacation') || n.includes('trip') || n.includes('tour'))
+    return '✈️';
+  if (n.includes('home') || n.includes('renov') || n.includes('house')) return '🏠';
+  if (n.includes('car') || n.includes('vehicle') || n.includes('bike')) return '🚗';
+  if (n.includes('invest') || n.includes('stock')) return '📈';
+  return '🎯';
+}
 
 export default function GoalsListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
@@ -63,9 +76,9 @@ export default function GoalsListScreen() {
           <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
             SAVINGS TARGETS
           </Text>
-          <Text style={[typography.title, { color: colors.textPrimary }]}>Financial Goals</Text>
+          <Text style={[typography.title, { color: colors.textPrimary }]}>Goals</Text>
         </View>
-        <Button label="+ New Goal" size="sm" onPress={() => router.push('/goals/new')} />
+        <Button label="+ Add Goal" size="sm" onPress={() => router.push('/goals/new')} />
       </View>
 
       {/* Goal Cards */}
@@ -88,86 +101,123 @@ export default function GoalsListScreen() {
               monthsRemaining,
               requiredMonthlySavings,
               isCompleted,
-            }) => (
-              <Card key={goal.id} style={{ gap: spacing.md }}>
-                <View
+            }) => {
+              const icon = getGoalIcon(goal.name);
+
+              return (
+                <Card
+                  key={goal.id}
                   style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
+                    gap: spacing.md,
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
                   }}
                 >
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text
-                      style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 16 }]}
-                    >
-                      {goal.name}
-                    </Text>
-                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                      Target: {formatMoneyDisplay(goal.targetAmount, goal.currency)}
-                      {goal.targetDate ? ` · by ${goal.targetDate}` : ''}
-                    </Text>
-                  </View>
-                  <Badge
-                    label={isCompleted ? 'COMPLETED' : `${progressPercent}%`}
-                    variant={isCompleted ? 'success' : 'primary'}
-                  />
-                </View>
-
-                {/* Progress bar */}
-                <ProgressBar
-                  progressPercent={progressPercent}
-                  color={isCompleted ? colors.income : colors.primary}
-                  height={8}
-                />
-
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    Saved {formatMoneyDisplay(savedAmount, goal.currency)}
-                  </Text>
-                  <Text style={[typography.captionMedium, { color: colors.textPrimary }]}>
-                    Remaining {formatMoneyDisplay(remainingAmount, goal.currency)}
-                  </Text>
-                </View>
-
-                {requiredMonthlySavings && !isCompleted ? (
                   <View
                     style={{
-                      backgroundColor: colors.surfaceMuted,
-                      padding: spacing.sm,
-                      borderRadius: radius.md,
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
                     }}
                   >
-                    <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 16 }}>
-                      💡 Target pace: Save{' '}
-                      {formatMoneyDisplay(requiredMonthlySavings, goal.currency)}/mo for{' '}
-                      {monthsRemaining} mo.
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: spacing.md,
+                        flex: 1,
+                      }}
+                    >
+                      <View
+                        style={[
+                          styles.iconCircle,
+                          {
+                            backgroundColor: colors.surfaceMuted,
+                            borderRadius: radius.md,
+                          },
+                        ]}
+                      >
+                        <Text style={{ fontSize: 20 }}>{icon}</Text>
+                      </View>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text
+                          style={[
+                            typography.sectionTitle,
+                            { color: colors.textPrimary, fontSize: 16 },
+                          ]}
+                        >
+                          {goal.name}
+                        </Text>
+                        <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                          {formatMoneyDisplay(savedAmount, goal.currency)} /{' '}
+                          {formatMoneyDisplay(goal.targetAmount, goal.currency)}
+                          {goal.targetDate ? ` · Target: ${goal.targetDate}` : ''}
+                        </Text>
+                      </View>
+                    </View>
+                    <Badge
+                      label={isCompleted ? 'COMPLETED' : `${progressPercent}%`}
+                      variant={isCompleted ? 'success' : 'primary'}
+                    />
+                  </View>
+
+                  {/* Progress bar */}
+                  <ProgressBar
+                    progressPercent={progressPercent}
+                    color={isCompleted ? colors.income : colors.primary}
+                    height={8}
+                  />
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                      Saved {formatMoneyDisplay(savedAmount, goal.currency)}
+                    </Text>
+                    <Text style={[typography.captionMedium, { color: colors.textPrimary }]}>
+                      Remaining {formatMoneyDisplay(remainingAmount, goal.currency)}
                     </Text>
                   </View>
-                ) : null}
 
-                {/* Action row */}
-                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md }}>
-                  {!isCompleted && (
-                    <Button
-                      label="Deposit"
-                      variant="outline"
-                      size="sm"
-                      onPress={() => {
-                        setSelectedGoalId(goal.id);
-                        setContributionAmount('');
+                  {requiredMonthlySavings && !isCompleted ? (
+                    <View
+                      style={{
+                        backgroundColor: colors.surfaceMuted,
+                        padding: spacing.sm,
+                        borderRadius: radius.md,
                       }}
+                    >
+                      <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 16 }}>
+                        💡 Target pace: Save{' '}
+                        {formatMoneyDisplay(requiredMonthlySavings, goal.currency)}/mo for{' '}
+                        {monthsRemaining} mo.
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {/* Action row */}
+                  <View
+                    style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md }}
+                  >
+                    {!isCompleted && (
+                      <Button
+                        label="Deposit"
+                        variant="outline"
+                        size="sm"
+                        onPress={() => {
+                          setSelectedGoalId(goal.id);
+                          setContributionAmount('');
+                        }}
+                      />
+                    )}
+                    <Button
+                      label="Delete"
+                      variant="ghost"
+                      size="sm"
+                      onPress={() => void handleDelete(goal.id)}
                     />
-                  )}
-                  <Button
-                    label="Delete"
-                    variant="ghost"
-                    size="sm"
-                    onPress={() => void handleDelete(goal.id)}
-                  />
-                </View>
-              </Card>
-            ),
+                  </View>
+                </Card>
+              );
+            },
           )
         )}
       </View>
@@ -183,7 +233,13 @@ export default function GoalsListScreen() {
               padding: spacing.lg,
             }}
           >
-            <Card style={{ gap: spacing.md, backgroundColor: colors.surfaceElevated }}>
+            <Card
+              style={{
+                gap: spacing.md,
+                backgroundColor: colors.surfaceElevated,
+                borderColor: colors.border,
+              }}
+            >
               <SectionHeader title="Record Goal Contribution" />
               <Input
                 label="Deposit Amount"
@@ -259,3 +315,12 @@ export default function GoalsListScreen() {
     </ScrollScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  iconCircle: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

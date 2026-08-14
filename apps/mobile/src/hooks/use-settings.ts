@@ -20,12 +20,12 @@ export function useSettings() {
   }, [load, nonce]);
 
   const completeOnboarding = useCallback(
-    async (input: { baseCurrency: string; defaultAccountId: string }) => {
+    async (input: { baseCurrency: string; defaultAccountId: string; displayName?: string }) => {
       const now = nowIso();
       const current = await settings.get();
       await settings.upsert({
         id: current?.id ?? LOCAL_SETTINGS_ID,
-        displayName: current?.displayName ?? null,
+        displayName: input.displayName ?? current?.displayName ?? null,
         locale: current?.locale ?? 'en-US',
         timezone: current?.timezone ?? 'Asia/Dhaka',
         theme: current?.theme ?? 'system',
