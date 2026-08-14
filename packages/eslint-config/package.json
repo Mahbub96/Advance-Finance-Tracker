@@ -1,5 +1,14 @@
 {
   "name": "@personal-finance/eslint-config",
   "private": true,
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "scripts": {
+    "lint": "node -e \"process.exit(0)\"",
+    "typecheck": "node -e \"process.exit(0)\"",
+    "test": "node -e \"process.exit(0)\""
+  }
 }

@@ -1,45 +1,134 @@
-# Dependencies
+# --- Dependencies ---
 node_modules/
 .pnpm-store/
+.yarn/
+.pnp.*
 
-# Builds
+# --- Builds / caches ---
 dist/
 build/
-.expo/
-.expo-shared/
-android/
-ios/
-web-build/
+out/
+.turbo/
+.cache/
+.eslintcache
+.prettiercache
 *.tsbuildinfo
 
-# Env / secrets
+# --- Environment / secrets ---
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
+*.pem
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.jks
+*.keystore
+!debug.keystore
 
-# OS / IDE
+# --- Logs / runtime ---
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.pid
+*.pid.lock
+*.seed
+
+# --- Tests / coverage ---
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+playwright-report/
+html-report/
+
+# --- OS ---
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- Editors ---
 .idea/
+*.iml
+*.swp
+*.swo
+*~
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
 
-# Logs / coverage
-logs/
-*.log
-coverage/
-.nyc_output/
-
-# Prisma
+# --- NestJS / Prisma ---
+apps/api/dist/
+apps/api/uploads/
+apps/api/tmp/
 apps/api/prisma/*.db
-apps/api/prisma/*.db-journal
+apps/api/prisma/*.db-*
+apps/api/prisma/generated/
 
-# Mobile local DB
+# --- SQLite (mobile + local) ---
 *.sqlite
-*.sqlite-journal
+*.sqlite-*
+*.db
+*.db-*
 
-# Misc
-*.pem
-.turbo/
+# --- Database dumps (never commit financial data) ---
+*.dump
+*.backup
+*.sql.gz
+dump.rdb
+
+# --- Expo / React Native ---
+.expo/
+.expo-shared/
+expo-env.d.ts
+web-build/
+.metro-health-check*
+*.orig.*
+*.jsbundle
+
+# Generated native projects (Expo prebuild / EAS). Remove these two
+# lines if you commit android/ and ios/ as a bare workflow.
+apps/mobile/android/
+apps/mobile/ios/
+
+# Android / Xcode leftovers if native dirs are ever committed
+*.hprof
+.cxx/
+.gradle/
+local.properties
+*.hmap
+*.ipa
+*.xcuserstate
+*.xccheckout
+xcuserdata/
+DerivedData/
+**/.xcode.env.local
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+**/fastlane/test_output
+**/Pods/
+vendor/bundle/
+
+# --- EAS ---
+.eas/
+eas-build-local/
+
+# --- Misc ---
+tmp/
+temp/
+.temp/
+uploads/
+*.tgz
+.vercel/
+.sentryclirc

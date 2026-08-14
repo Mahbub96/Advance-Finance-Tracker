@@ -8,7 +8,7 @@ Production-grade, offline-first personal finance platform.
 | ----- | ------ |
 | Mobile | React Native + Expo (TypeScript, Expo Router) |
 | Backend | NestJS |
-| Cloud DB | PostgreSQL + Prisma |
+| Cloud DB | PostgreSQL + Prisma (Phase 6) |
 | Local DB | SQLite |
 | Cache / jobs | Redis |
 | Repo | pnpm monorepo |
@@ -17,27 +17,33 @@ Production-grade, offline-first personal finance platform.
 
 ```text
 apps/mobile   Expo mobile app (Android-first, offline-first)
-apps/api      NestJS API
+apps/api      NestJS API (health shell until Phase 6)
 packages/     Shared types, validation, API client, config
 docs/         Product, UX, architecture, AI, engineering docs
-infrastructure/
 ```
 
 ## Documentation
 
 Start at [docs/DOCS.md](docs/DOCS.md).
 
-**Phase 0 (current):** product discovery docs — next file is `docs/01_PROJECT_VISION.md`.
+**Current:** Phase 3 — local-first financial foundation (accounts, categories, transactions, transfers).
 
 ## Getting started
 
 ```bash
 pnpm install
 cp .env.example .env
-docker compose up -d   # PostgreSQL + Redis
+docker compose up -d   # PostgreSQL + Redis (API later)
+
+pnpm dev:mobile        # Expo
+pnpm dev:api           # NestJS GET /health
+
+pnpm lint
+pnpm typecheck
+pnpm test
 ```
 
-App scaffolding lands after Phase 0–2 documentation is complete.
+The mobile app works fully offline. Cloud sync is Phase 6.
 
 ## License
 

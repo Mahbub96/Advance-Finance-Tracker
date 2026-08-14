@@ -2,34 +2,47 @@
 
 > Implementation phases and releases.
 
-## Phase 0 — Product Discovery (current)
+## Phase 0 — Product Discovery
 
 - [x] DOCS.md
-- [ ] 01_PROJECT_VISION.md
-- [ ] 02_PRD.md
-- [ ] 03_PRODUCT_SCOPE.md
-- [ ] 04_FEATURES.md
+- [x] 01_PROJECT_VISION.md
+- [x] 02_PRD.md
+- [x] 03_PRODUCT_SCOPE.md
+- [x] 04_FEATURES.md
 
 ## Phase 1 — UX Research
 
-- [ ] UX_RESEARCH.md
-- [ ] INFORMATION_ARCHITECTURE.md
-- [ ] USER_FLOWS.md
-- [ ] UI_DESIGN.md
-- [ ] DESIGN_SYSTEM.md
+- [x] UX_RESEARCH.md
+- [x] INFORMATION_ARCHITECTURE.md
+- [x] USER_FLOWS.md
+- [x] UI_DESIGN.md
+- [x] DESIGN_SYSTEM.md
 
 ## Phase 2 — Technical Architecture
 
-- [ ] SYSTEM_ARCHITECTURE.md
-- [ ] DATABASE.md
-- [ ] LOCAL_STORAGE.md
-- [ ] SYNC_ARCHITECTURE.md
-- [ ] API.md
-- [ ] SECURITY.md
+- [x] SYSTEM_ARCHITECTURE.md
+- [x] DATABASE.md
+- [x] LOCAL_STORAGE.md
+- [x] SYNC_ARCHITECTURE.md
+- [x] API.md
+- [x] SECURITY.md
 
-## Phase 3 — Core Product
+## Phase 3 — Core Product (in progress)
 
-Accounts · Categories · Transactions · Transfers · Budgets · Recurring Transactions
+Release 1 — Financial Foundation (local-first):
+
+- [x] Tooling / runnable monorepo
+- [x] Local SQLite
+- [x] Accounts
+- [x] Categories
+- [x] Transactions
+- [x] Transfers
+- [x] Onboarding + Home + basic totals
+
+Later in Phase 3:
+
+- [ ] Budgets
+- [ ] Recurring Transactions
 
 ## Phase 4 — Advanced Finance
 
