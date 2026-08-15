@@ -1,23 +1,38 @@
 {
   "expo": {
-    "name": "Personal Finance",
+    "name": "FinTrack",
     "slug": "personal-finance",
     "version": "0.0.1",
     "orientation": "portrait",
     "scheme": "personalfinance",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#090D16",
+    "primaryColor": "#2563EB",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#090D16",
+      "dark": {
+        "image": "./assets/splash-icon.png",
+        "backgroundColor": "#090D16"
+      }
+    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.personalfinance.mobile"
+      "bundleIdentifier": "app.personalfinance.mobile",
+      "backgroundColor": "#090D16"
     },
     "android": {
       "package": "app.personalfinance.mobile",
+      "backgroundColor": "#090D16",
       "adaptiveIcon": {
-        "backgroundColor": "#1F6FEB"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#090D16"
       }
     },
-    "plugins": ["expo-router", "expo-sqlite"],
+    "plugins": ["expo-router", "expo-sqlite", "expo-splash-screen"],
     "experiments": {
       "typedRoutes": true,
       "tsconfigPaths": true

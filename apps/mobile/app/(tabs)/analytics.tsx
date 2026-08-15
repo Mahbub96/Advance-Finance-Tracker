@@ -9,6 +9,7 @@ import { ProgressBar } from '../../src/components/ProgressBar';
 import { ScrollScreen } from '../../src/components/Screen';
 import { SegmentedControl } from '../../src/components/SegmentedControl';
 import { StatCard } from '../../src/components/StatCard';
+import { AnalyticsSkeleton } from '../../src/components/skeletons/AnalyticsSkeleton';
 import { DonutChart, type DonutSegment } from '../../src/components/charts/DonutChart';
 import { CashFlowBarChart } from '../../src/components/charts/CashFlowBarChart';
 import type { CategoryBreakdownItem } from '../../src/features/analytics/services/analytics-service';
@@ -55,6 +56,7 @@ export default function AnalyticsScreen() {
   const [activeTab, setActiveTab] = useState<ReportTab>('SPENDING');
   const [currentMonthIndex, setCurrentMonthIndex] = useState(new Date().getMonth());
   const currentYear = new Date().getFullYear();
+  const [loading, setLoading] = useState(true);
   const [cashFlow, setCashFlow] = useState({
     totalIncome: '0.00',
     totalExpenses: '0.00',
@@ -75,10 +77,36 @@ export default function AnalyticsScreen() {
     const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
     const lastDay = `${yearMonth}-${String(lastDayOfMonth).padStart(2, '0')}`;
 
-    void analytics.getCashFlow(firstDay, lastDay).then(setCashFlow);
-    void analytics.getCategoryBreakdown(firstDay, lastDay).then(setCategories);
-    void analytics.getMonthlyCashFlowHistory(6).then(setCashFlowHistory);
+    setLoading(true);
+    void Promise.all([
+      analytics.getCashFlow(firstDay, lastDay),
+      analytics.getCategoryBreakdown(firstDay, lastDay),
+      analytics.getMonthlyCashFlowHistory(6),
+    ]).then(([cf, cats, history]) => {
+      setCashFlow(cf);
+      setCategories(cats);
+      setCashFlowHistory(history);
+    }).finally(() => {
+      setLoading(false);
+    });
   }, [analytics, nonce, currentMonthIndex, currentYear]);
+
+  const isNetPositive = parseFloat(cashFlow.netSavings) >= 0;
+
+  // Donut chart segments
+  const donutSegments: DonutSegment[] = useMemo(() => {
+    return categories.map((cat, idx) => ({
+      label: cat.categoryName,
+      value: parseFloat(cat.totalSpent),
+      percentage: cat.percentageOfExpenses,
+      color: CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length] || '#2563EB',
+      formattedValue: formatMoneyDisplay(cat.totalSpent, currency),
+    }));
+  }, [categories, currency]);
+
+  if (loading) {
+    return <AnalyticsSkeleton />;
+  }
 
   const handleExport = async () => {
     setExporting(true);
@@ -95,19 +123,6 @@ export default function AnalyticsScreen() {
       setExporting(false);
     }
   };
-
-  const isNetPositive = parseFloat(cashFlow.netSavings) >= 0;
-
-  // Donut chart segments
-  const donutSegments: DonutSegment[] = useMemo(() => {
-    return categories.map((cat, idx) => ({
-      label: cat.categoryName,
-      value: parseFloat(cat.totalSpent),
-      percentage: cat.percentageOfExpenses,
-      color: CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length] || '#2563EB',
-      formattedValue: formatMoneyDisplay(cat.totalSpent, currency),
-    }));
-  }, [categories, currency]);
 
   const reportTabs = [
     { id: 'SPENDING' as const, label: 'Spending' },

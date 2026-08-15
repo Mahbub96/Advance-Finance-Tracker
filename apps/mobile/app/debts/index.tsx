@@ -10,11 +10,13 @@ import { ProgressBar } from '../../src/components/ProgressBar';
 import { ScrollScreen } from '../../src/components/Screen';
 import { SectionHeader } from '../../src/components/SectionHeader';
 import { StatCard } from '../../src/components/StatCard';
+import { DebtsSkeleton } from '../../src/components/skeletons/DebtsSkeleton';
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useDebts } from '../../src/hooks/use-debts';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
+import { DeleteConfirmModal } from '../../src/components/DeleteConfirmModal';
 
 const QUICK_REPAY_INCREMENTS = [500, 1000, 2000, 5000];
 
@@ -35,7 +37,7 @@ function getDueLabel(dueDate: string | null): { label: string; isOverdue: boolea
 
 export default function DebtsListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
-  const { debts, reload } = useDebts();
+  const { debts, loading, reload } = useDebts();
   const { debts: debtService, refresh } = useFinance();
   const { accounts } = useAccounts();
   const { settings } = useSettings();
@@ -49,10 +51,19 @@ export default function DebtsListScreen() {
   const [repayError, setRepayError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const activeDebt = debts.find((d) => d.debt.id === selectedDebtId);
+  // Delete confirm state
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingName, setDeletingName] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const moneyOwedToYou = useMemo(() => debts.filter((d) => d.debt.type === 'LENT'), [debts]);
   const moneyYouOwe = useMemo(() => debts.filter((d) => d.debt.type === 'BORROWED'), [debts]);
+
+  if (loading) {
+    return <DebtsSkeleton />;
+  }
+
+  const activeDebt = debts.find((d) => d.debt.id === selectedDebtId);
 
   const totalLent = moneyOwedToYou.reduce(
     (sum, d) => moneyString(parseMoney(sum).plus(parseMoney(d.remainingAmount))),
@@ -111,10 +122,23 @@ export default function DebtsListScreen() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    await debtService.delete(id);
-    refresh();
-    await reload();
+  const confirmDelete = (id: string, name: string) => {
+    setDeletingId(id);
+    setDeletingName(name);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    setDeleteLoading(true);
+    try {
+      await debtService.delete(deletingId);
+      refresh();
+      await reload();
+    } finally {
+      setDeleteLoading(false);
+      setDeletingId(null);
+      setDeletingName('');
+    }
   };
 
   return (
@@ -230,7 +254,7 @@ export default function DebtsListScreen() {
                     label="Delete"
                     variant="ghost"
                     size="sm"
-                    onPress={() => void handleDelete(debt.id)}
+                    onPress={() => confirmDelete(debt.id, debt.personName)}
                   />
                 </View>
               </Card>
@@ -315,7 +339,7 @@ export default function DebtsListScreen() {
                     label="Delete"
                     variant="ghost"
                     size="sm"
-                    onPress={() => void handleDelete(debt.id)}
+                    onPress={() => confirmDelete(debt.id, debt.personName)}
                   />
                 </View>
               </Card>
@@ -447,6 +471,20 @@ export default function DebtsListScreen() {
           </View>
         </Modal>
       ) : null}
+
+      {/* Delete confirmation modal */}
+      <DeleteConfirmModal
+        visible={!!deletingId}
+        title="Delete Debt Record?"
+        message={`The debt record for "${deletingName}" will be soft-deleted. Repayment history will be preserved but hidden.`}
+        deleteLabel="Delete Record"
+        loading={deleteLoading}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => {
+          setDeletingId(null);
+          setDeletingName('');
+        }}
+      />
     </ScrollScreen>
   );
 }

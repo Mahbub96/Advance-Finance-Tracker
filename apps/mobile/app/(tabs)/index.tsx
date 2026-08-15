@@ -1,7 +1,7 @@
 import { formatMoneyDisplay } from '@personal-finance/types';
 import { useRouter } from 'expo-router';
-import { useEffect, useState, useMemo } from 'react';
-import { Pressable, Text, View, StyleSheet } from 'react-native';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { Pressable, Text, View, StyleSheet, Animated } from 'react-native';
 import { Badge } from '../../src/components/Badge';
 import { Card } from '../../src/components/Card';
 import { EmptyState } from '../../src/components/EmptyState';
@@ -12,6 +12,7 @@ import { ScrollScreen } from '../../src/components/Screen';
 import { SectionHeader } from '../../src/components/SectionHeader';
 import { SparklineChart } from '../../src/components/charts/SparklineChart';
 import { TransactionRow } from '../../src/features/transactions/components/TransactionRow';
+import { DashboardSkeleton } from '../../src/components/skeletons/DashboardSkeleton';
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useBudgets } from '../../src/hooks/use-budgets';
 import { useGoals } from '../../src/hooks/use-goals';
@@ -54,8 +55,8 @@ export default function HomeScreen() {
   const { colors, typography, spacing, radius } = useTokens();
   const { hideBalance, setHideBalance } = useThemeContext();
   const { settings } = useSettings();
-  const { accounts, totalBalance } = useAccounts();
-  const { transactions } = useTransactions();
+  const { accounts, totalBalance, loading: loadingAccounts } = useAccounts();
+  const { transactions, loading: loadingTransactions } = useTransactions();
   const { budgets } = useBudgets();
   const { goals } = useGoals();
   const { recurringRules } = useRecurringRules();
@@ -71,6 +72,7 @@ export default function HomeScreen() {
   });
   const [sparklinePoints, setSparklinePoints] = useState<number[]>([0, 0]);
   const [momDelta, setMomDelta] = useState<string>('+0.0%');
+  const [loadingAnalytics, setLoadingAnalytics] = useState(true);
 
   useEffect(() => {
     const { from, to } = monthRange();
@@ -80,6 +82,7 @@ export default function HomeScreen() {
     const prevFirst = `${prevYearMonth}-01`;
     const prevLast = `${prevYearMonth}-${String(new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0).getDate()).padStart(2, '0')}`;
 
+    setLoadingAnalytics(true);
     void Promise.all([
       analytics.getCashFlow(from, to),
       analytics.getCashFlow(prevFirst, prevLast),
@@ -98,8 +101,39 @@ export default function HomeScreen() {
       } else {
         setMomDelta('0%');
       }
+    }).finally(() => {
+      setLoadingAnalytics(false);
     });
   }, [analytics, nonce]);
+
+  // Upcoming commitments (next 3 due rules) per Section 9
+  const upcomingReminders = useMemo(() => {
+    return recurringRules.filter((r) => r.rule.status === 'ACTIVE').slice(0, 3);
+  }, [recurringRules]);
+
+  const fabScale = useRef(new Animated.Value(1)).current;
+
+  const handleFabPressIn = () => {
+    Animated.spring(fabScale, {
+      toValue: 0.92,
+      useNativeDriver: true,
+      speed: 50,
+      bounciness: 6,
+    }).start();
+  };
+
+  const handleFabPressOut = () => {
+    Animated.spring(fabScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 40,
+      bounciness: 8,
+    }).start();
+  };
+
+  if (loadingAccounts && loadingTransactions && loadingAnalytics) {
+    return <DashboardSkeleton />;
+  }
 
   const currency = settings?.baseCurrency ?? 'BDT';
   const recent = transactions.filter((tx) => tx.transferLeg !== 'IN').slice(0, 4);
@@ -107,11 +141,6 @@ export default function HomeScreen() {
 
   // Top 3 actionable insights per Section 12
   const topInsights = insights.slice(0, 3);
-
-  // Upcoming commitments (next 3 due rules) per Section 9
-  const upcomingReminders = useMemo(() => {
-    return recurringRules.filter((r) => r.rule.status === 'ACTIVE').slice(0, 3);
-  }, [recurringRules]);
 
   // Active budgets summary preview
   const primaryBudget = budgets[0];
@@ -154,6 +183,7 @@ export default function HomeScreen() {
   ];
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollScreen>
       {/* 1. GREETING / PROFILE HEADER */}
       <View style={styles.headerRow}>
@@ -601,6 +631,31 @@ export default function HomeScreen() {
         </View>
       </View>
     </ScrollScreen>
+
+      {/* Floating Action Button — Add Expense */}
+      <Animated.View
+        style={[
+          styles.fab,
+          {
+            transform: [{ scale: fabScale }],
+            backgroundColor: colors.expense,
+            shadowColor: colors.expense,
+          },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel="Add Expense"
+      >
+        <Pressable
+          onPress={() => router.push('/(tabs)/add?mode=EXPENSE')}
+          onPressIn={handleFabPressIn}
+          onPressOut={handleFabPressOut}
+          style={styles.fabInner}
+        >
+          <Text style={styles.fabIcon}>💸</Text>
+          <Text style={[styles.fabLabel, { color: '#FFFFFF' }]}>Expense</Text>
+        </Pressable>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -637,5 +692,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     gap: 4,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 96,
+    right: 20,
+    borderRadius: 999,
+    boxShadow: '0 8px 24px rgba(239, 68, 68, 0.45)',
+    elevation: 10,
+    zIndex: 100,
+  },
+  fabInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 999,
+  },
+  fabIcon: {
+    fontSize: 18,
+  },
+  fabLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });

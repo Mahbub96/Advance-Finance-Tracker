@@ -5,11 +5,13 @@ import { Modal, Pressable, Text, View, StyleSheet } from 'react-native';
 import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { DeleteConfirmModal } from '../../src/components/DeleteConfirmModal';
 import { EmptyState } from '../../src/components/EmptyState';
 import { Input } from '../../src/components/Input';
 import { ProgressBar } from '../../src/components/ProgressBar';
 import { ScrollScreen } from '../../src/components/Screen';
 import { SectionHeader } from '../../src/components/SectionHeader';
+import { GoalsSkeleton } from '../../src/components/skeletons/GoalsSkeleton';
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useGoals } from '../../src/hooks/use-goals';
 import { useFinance } from '../../src/providers/finance-provider';
@@ -32,7 +34,7 @@ const QUICK_INCREMENTS = [500, 1000, 5000, 10000];
 
 export default function GoalsListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
-  const { goals, reload } = useGoals();
+  const { goals, loading, reload } = useGoals();
   const { goals: goalService, refresh } = useFinance();
   const { accounts } = useAccounts();
   const router = useRouter();
@@ -42,6 +44,15 @@ export default function GoalsListScreen() {
   const [contributionAccountId, setContributionAccountId] = useState<string | null>(null);
   const [contributionError, setContributionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Delete confirm state
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingName, setDeletingName] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  if (loading) {
+    return <GoalsSkeleton />;
+  }
 
   const activeGoal = goals.find((g) => g.goal.id === selectedGoalId);
 
@@ -80,10 +91,23 @@ export default function GoalsListScreen() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    await goalService.delete(id);
-    refresh();
-    await reload();
+  const confirmDelete = (id: string, name: string) => {
+    setDeletingId(id);
+    setDeletingName(name);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    setDeleteLoading(true);
+    try {
+      await goalService.delete(deletingId);
+      refresh();
+      await reload();
+    } finally {
+      setDeleteLoading(false);
+      setDeletingId(null);
+      setDeletingName('');
+    }
   };
 
   return (
@@ -231,7 +255,7 @@ export default function GoalsListScreen() {
                       label="Delete"
                       variant="ghost"
                       size="sm"
-                      onPress={() => void handleDelete(goal.id)}
+                      onPress={() => confirmDelete(goal.id, goal.name)}
                     />
                   </View>
                 </Card>
@@ -375,6 +399,20 @@ export default function GoalsListScreen() {
           </View>
         </Modal>
       ) : null}
+
+      {/* Delete confirmation modal */}
+      <DeleteConfirmModal
+        visible={!!deletingId}
+        title="Delete Goal?"
+        message={`"${deletingName}" and its contribution history will be soft-deleted. Your account balances are not affected.`}
+        deleteLabel="Delete Goal"
+        loading={deleteLoading}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => {
+          setDeletingId(null);
+          setDeletingName('');
+        }}
+      />
     </ScrollScreen>
   );
 }

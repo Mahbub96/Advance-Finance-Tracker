@@ -2,21 +2,20 @@ import { TransactionType, formatMoneyDisplay, parseMoney } from '@personal-finan
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Pressable,
-  Text,
-  View,
-  StyleSheet,
+  Animated,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
+  StyleSheet,
+  Text,
   TextInput,
+  View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/Button';
-import { Card } from '../../src/components/Card';
 import { DatePickerInput } from '../../src/components/DatePickerInput';
 import { Input } from '../../src/components/Input';
-import { Screen } from '../../src/components/Screen';
-import { SegmentedControl } from '../../src/components/SegmentedControl';
 import { TextArea } from '../../src/components/TextArea';
 import { todayIsoDate } from '../../src/lib/clock';
 import { useAccounts } from '../../src/hooks/use-accounts';
@@ -27,7 +26,7 @@ import { useTokens } from '../../src/theme/tokens';
 
 type Mode = 'EXPENSE' | 'INCOME' | 'TRANSFER';
 
-const QUICK_AMOUNTS = [100, 500, 1000, 2000, 5000];
+const QUICK_AMOUNTS = [50, 100, 500, 1000, 5000];
 
 function getAccountIcon(type: string): string {
   switch (type) {
@@ -46,8 +45,35 @@ function getAccountIcon(type: string): string {
   }
 }
 
+const MODE_CONFIG: Record<
+  Mode,
+  { label: string; icon: string; colorKey: 'expense' | 'income' | 'primary'; prefix: string; gradient: [string, string] }
+> = {
+  EXPENSE: {
+    label: 'Expense',
+    icon: '💸',
+    colorKey: 'expense',
+    prefix: '−',
+    gradient: ['#DC2626', '#EF4444'],
+  },
+  INCOME: {
+    label: 'Income',
+    icon: '💰',
+    colorKey: 'income',
+    prefix: '+',
+    gradient: ['#059669', '#10B981'],
+  },
+  TRANSFER: {
+    label: 'Transfer',
+    icon: '🔁',
+    colorKey: 'primary',
+    prefix: '⇄',
+    gradient: ['#1D4ED8', '#3B82F6'],
+  },
+};
+
 export default function AddTransactionScreen() {
-  const { colors, spacing, typography, radius } = useTokens();
+  const { colors, spacing, radius } = useTokens();
   const { transactions, refresh } = useFinance();
   const { accounts } = useAccounts();
   const { categories } = useCategories();
@@ -56,6 +82,8 @@ export default function AddTransactionScreen() {
   const params = useLocalSearchParams<{ mode?: string; initialAmount?: string }>();
 
   const amountInputRef = useRef<TextInput>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(12)).current;
 
   const [mode, setMode] = useState<Mode>(
     params.mode === 'INCOME' ? 'INCOME' : params.mode === 'TRANSFER' ? 'TRANSFER' : 'EXPENSE',
@@ -73,14 +101,34 @@ export default function AddTransactionScreen() {
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const currency = settings?.baseCurrency ?? 'BDT';
+  const modeConf = MODE_CONFIG[mode];
+  const modeColor = colors[modeConf.colorKey];
+
+  // Entry animation
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, speed: 22, bounciness: 5, useNativeDriver: true }),
+    ]).start();
+  }, []);
 
   // Auto-focus the amount field on mount
   useEffect(() => {
     const timer = setTimeout(() => {
       amountInputRef.current?.focus();
-    }, 150);
+    }, 300);
     return () => clearTimeout(timer);
   }, []);
+
+  // Re-animate on mode change
+  const animateMode = () => {
+    slideAnim.setValue(8);
+    fadeAnim.setValue(0.6);
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, speed: 30, bounciness: 4, useNativeDriver: true }),
+    ]).start();
+  };
 
   const defaultAccount = accounts.find((a) => a.id === settings?.defaultAccountId) ?? accounts[0];
   const selectedAccount = accounts.find((a) => a.id === (accountId ?? defaultAccount?.id));
@@ -119,19 +167,12 @@ export default function AddTransactionScreen() {
     if (!selectedAccount || isNaN(numAmount) || numAmount <= 0) return null;
     const current = parseMoney(selectedAccount.balance);
     const delta = parseMoney(amount);
-
     if (mode === 'INCOME') {
       return current.plus(delta).toString();
     } else {
       return current.minus(delta).toString();
     }
   }, [selectedAccount, amount, numAmount, mode]);
-
-  const modeOptions = [
-    { id: 'EXPENSE' as const, label: '💸 Expense' },
-    { id: 'INCOME' as const, label: '💰 Income' },
-    { id: 'TRANSFER' as const, label: '🔁 Transfer' },
-  ];
 
   const handleAddQuickAmount = (val: number) => {
     const current = parseFloat(amount) || 0;
@@ -140,24 +181,15 @@ export default function AddTransactionScreen() {
 
   const handleSave = async () => {
     setSubmitted(true);
-
-    if (!isAmountValid || !selectedAccount) {
-      return;
-    }
-
-    if (mode !== 'TRANSFER' && !selectedCategory) {
-      return;
-    }
-
+    if (!isAmountValid || !selectedAccount) return;
+    if (mode !== 'TRANSFER' && !selectedCategory) return;
     if (
       mode === 'TRANSFER' &&
       (!selectedDestination || selectedDestination.id === selectedAccount.id)
-    ) {
+    )
       return;
-    }
 
     setBusy(true);
-
     try {
       if (mode === 'TRANSFER') {
         await transactions.createTransfer({
@@ -178,7 +210,6 @@ export default function AddTransactionScreen() {
           note: note.trim() || undefined,
         });
       }
-
       refresh();
       setSavedSuccess(true);
       setTimeout(() => {
@@ -194,68 +225,85 @@ export default function AddTransactionScreen() {
     mode === 'TRANSFER' ? 'Save Transfer' : mode === 'INCOME' ? 'Save Income' : 'Save Expense';
 
   return (
-    <Screen>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={[styles.safeArea, { backgroundColor: colors.background }]}
+    >
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xxl }}
-          showsVerticalScrollIndicator={false}
+        {/* ── HERO HEADER ─────────────────────────────────────────────── */}
+        <View
+          style={[
+            styles.hero,
+            {
+              backgroundColor: modeColor,
+              paddingTop: spacing.md,
+              paddingHorizontal: spacing.lg,
+              paddingBottom: spacing.xl,
+            },
+          ]}
         >
-          {/* Top Bar Header */}
-          <View
-            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-          >
-            <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
-              QUICK TRANSACTION
-            </Text>
-            <Pressable onPress={() => router.back()} style={{ padding: 4 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 16 }}>✕</Text>
+          {/* Top row: title + close */}
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroTitleGroup}>
+              <Text style={styles.heroEyebrow}>NEW TRANSACTION</Text>
+              <Text style={styles.heroTitle}>{modeConf.icon} Add {modeConf.label}</Text>
+            </View>
+            <Pressable
+              onPress={() => router.back()}
+              style={[styles.closeBtn, { backgroundColor: 'rgba(255,255,255,0.18)' }]}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>✕</Text>
             </Pressable>
           </View>
 
-          {/* Mode Switcher */}
-          <SegmentedControl
-            options={modeOptions}
-            value={mode}
-            onChange={(val) => {
-              setMode(val);
-              setCategoryId(undefined);
-              if (submitted) setSubmitted(false);
+          {/* Mode pill switcher */}
+          <View style={[styles.modeSwitcher, { backgroundColor: 'rgba(0,0,0,0.18)' }]}>
+            {(['EXPENSE', 'INCOME', 'TRANSFER'] as Mode[]).map((m) => {
+              const conf = MODE_CONFIG[m];
+              const isActive = mode === m;
+              return (
+                <Pressable
+                  key={m}
+                  onPress={() => {
+                    setMode(m);
+                    setCategoryId(undefined);
+                    if (submitted) setSubmitted(false);
+                    animateMode();
+                  }}
+                  style={[
+                    styles.modeTab,
+                    isActive && styles.modeTabActive,
+                  ]}
+                >
+                  <Text style={{ fontSize: 13 }}>{conf.icon}</Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: isActive ? '700' : '500',
+                      color: isActive ? '#1A1A2E' : 'rgba(255,255,255,0.75)',
+                    }}
+                  >
+                    {conf.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Big amount display */}
+          <Animated.View
+            style={{
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+              marginTop: spacing.md,
             }}
-          />
-
-          {/* 1. Calculator-Style Big Amount Input Display */}
-          <Card
-            style={[
-              styles.amountCard,
-              {
-                backgroundColor: colors.surfaceElevated,
-                borderColor: amountError ? colors.danger : colors.border,
-              },
-            ]}
           >
-            <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
-              Amount ({currency})
-            </Text>
-
-            <View style={styles.amountInputRow}>
-              <Text
-                style={[
-                  styles.currencySymbol,
-                  {
-                    color:
-                      mode === 'INCOME'
-                        ? colors.income
-                        : mode === 'TRANSFER'
-                          ? colors.primary
-                          : colors.expense,
-                  },
-                ]}
-              >
-                {mode === 'INCOME' ? '+' : mode === 'TRANSFER' ? '⇄' : '-'}{' '}
+            <View style={styles.amountRow}>
+              <Text style={styles.amountPrefix}>{modeConf.prefix}</Text>
+              <Text style={styles.currencyCode}>
                 {currency === 'BDT' ? '৳' : currency}
               </Text>
               <TextInput
@@ -267,28 +315,21 @@ export default function AddTransactionScreen() {
                 }}
                 keyboardType="decimal-pad"
                 placeholder="0.00"
-                placeholderTextColor={colors.textTertiary}
-                style={[styles.bigAmountText, { color: colors.textPrimary }]}
-                selectionColor={colors.primary}
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                style={styles.amountInput}
+                selectionColor="rgba(255,255,255,0.7)"
               />
             </View>
 
-            {/* Quick Increment Chips */}
-            <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap', marginTop: 4 }}>
+            {/* Quick amount chips */}
+            <View style={styles.quickRow}>
               {QUICK_AMOUNTS.map((val) => (
                 <Pressable
                   key={val}
                   onPress={() => handleAddQuickAmount(val)}
-                  style={[
-                    styles.quickChip,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border,
-                      borderRadius: radius.pill,
-                    },
-                  ]}
+                  style={styles.quickChip}
                 >
-                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '500' }}>
+                  <Text style={styles.quickChipText}>
                     +{val >= 1000 ? `${val / 1000}k` : val}
                   </Text>
                 </Pressable>
@@ -296,70 +337,73 @@ export default function AddTransactionScreen() {
               {amount ? (
                 <Pressable
                   onPress={() => setAmount('')}
-                  style={[
-                    styles.quickChip,
-                    {
-                      backgroundColor: colors.surfaceMuted,
-                      borderColor: colors.border,
-                      borderRadius: radius.pill,
-                    },
-                  ]}
+                  style={[styles.quickChip, { backgroundColor: 'rgba(255,255,255,0.08)' }]}
                 >
-                  <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '500' }}>
+                  <Text style={[styles.quickChipText, { color: 'rgba(255,255,255,0.6)' }]}>
                     Clear
                   </Text>
                 </Pressable>
               ) : null}
             </View>
 
-            {/* Projected Balance Preview */}
-            {projectedBalance && selectedAccount ? (
-              <View style={styles.projectionRow}>
-                <Text style={[typography.micro, { color: colors.textTertiary }]}>
-                  {selectedAccount.name} Balance:{' '}
-                  {formatMoneyDisplay(selectedAccount.balance, selectedAccount.currency)} →
+            {/* Validation hint */}
+            {amountError && (
+              <Text style={styles.heroError}>⚠️ {amountError}</Text>
+            )}
+
+            {/* Balance projection pill */}
+            {projectedBalance && selectedAccount && (
+              <View style={styles.projectionPill}>
+                <Text style={styles.projectionText}>
+                  {selectedAccount.name}:{' '}
+                  {formatMoneyDisplay(selectedAccount.balance, selectedAccount.currency)}
+                  {' → '}
                 </Text>
                 <Text
                   style={[
-                    typography.captionMedium,
-                    {
-                      color: parseFloat(projectedBalance) >= 0 ? colors.textPrimary : colors.danger,
-                    },
+                    styles.projectionValue,
+                    { color: parseFloat(projectedBalance) >= 0 ? '#A7F3D0' : '#FCA5A5' },
                   ]}
                 >
                   {formatMoneyDisplay(projectedBalance, selectedAccount.currency)}
                 </Text>
               </View>
-            ) : null}
-
-            {amountError && (
-              <Text style={{ color: colors.danger, fontSize: 12, marginTop: 4 }}>
-                ⚠️ {amountError}
-              </Text>
             )}
-          </Card>
+          </Animated.View>
+        </View>
 
-          {/* 2. Fast 1-Tap Category Selector */}
+        {/* ── FORM BODY ────────────────────────────────────────────────── */}
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            gap: spacing.lg,
+            padding: spacing.lg,
+            paddingBottom: 120,
+          }}
+        >
+          {/* Category Selector */}
           {mode !== 'TRANSFER' && (
-            <View style={{ gap: spacing.xs }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
-                  Category {selectedCategory ? `(${selectedCategory.name})` : ''}
+            <View style={{ gap: spacing.sm }}>
+              <View style={styles.sectionLabelRow}>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+                  Category
                 </Text>
+                {selectedCategory && (
+                  <Text style={[styles.sectionSelected, { color: modeColor }]}>
+                    {selectedCategory.icon || '🏷️'} {selectedCategory.name}
+                  </Text>
+                )}
               </View>
               {categoryError && (
-                <Text style={{ color: colors.danger, fontSize: 12 }}>⚠️ {categoryError}</Text>
+                <Text style={[styles.fieldError, { color: colors.danger }]}>
+                  ⚠️ {categoryError}
+                </Text>
               )}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: spacing.xs }}
+                contentContainerStyle={{ gap: spacing.sm }}
               >
                 {categoryOptions.map((cat) => {
                   const isSelected = selectedCategory?.id === cat.id;
@@ -371,19 +415,22 @@ export default function AddTransactionScreen() {
                         if (submitted) setSubmitted(false);
                       }}
                       style={[
-                        styles.chip,
+                        styles.selectorChip,
                         {
-                          backgroundColor: isSelected ? colors.primary : colors.surface,
-                          borderColor: isSelected ? colors.primary : colors.border,
-                          borderRadius: radius.md,
+                          backgroundColor: isSelected ? modeColor : colors.surface,
+                          borderColor: isSelected ? modeColor : colors.border,
+                          borderRadius: radius.lg,
+                          boxShadow: isSelected
+                            ? `0 2px 8px ${modeColor}40`
+                            : '0 1px 3px rgba(0,0,0,0.06)',
                         },
                       ]}
                     >
-                      <Text style={{ fontSize: 15 }}>{cat.icon || '🏷️'}</Text>
+                      <Text style={{ fontSize: 18 }}>{cat.icon || '🏷️'}</Text>
                       <Text
                         style={{
-                          color: isSelected ? colors.primaryForeground : colors.textPrimary,
-                          fontWeight: isSelected ? '600' : '400',
+                          color: isSelected ? '#FFFFFF' : colors.textPrimary,
+                          fontWeight: isSelected ? '700' : '400',
                           fontSize: 13,
                         }}
                       >
@@ -396,19 +443,25 @@ export default function AddTransactionScreen() {
             </View>
           )}
 
-          {/* 3. Fast 1-Tap Account Selector */}
-          <View style={{ gap: spacing.xs }}>
-            <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
-              {mode === 'TRANSFER' ? 'From Account' : 'Account'}{' '}
-              {selectedAccount ? `(${selectedAccount.name})` : ''}
-            </Text>
+          {/* Account Selector */}
+          <View style={{ gap: spacing.sm }}>
+            <View style={styles.sectionLabelRow}>
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+                {mode === 'TRANSFER' ? 'From Account' : 'Account'}
+              </Text>
+              {selectedAccount && (
+                <Text style={[styles.sectionSelected, { color: colors.primary }]}>
+                  {getAccountIcon(selectedAccount.type)} {selectedAccount.name}
+                </Text>
+              )}
+            </View>
             {accountError && (
-              <Text style={{ color: colors.danger, fontSize: 12 }}>⚠️ {accountError}</Text>
+              <Text style={[styles.fieldError, { color: colors.danger }]}>⚠️ {accountError}</Text>
             )}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: spacing.xs }}
+              contentContainerStyle={{ gap: spacing.sm }}
             >
               {accounts.map((acc) => {
                 const isSelected = selectedAccount?.id === acc.id;
@@ -421,20 +474,23 @@ export default function AddTransactionScreen() {
                       if (submitted) setSubmitted(false);
                     }}
                     style={[
-                      styles.chip,
+                      styles.accountChip,
                       {
                         backgroundColor: isSelected ? colors.primary : colors.surface,
                         borderColor: isSelected ? colors.primary : colors.border,
-                        borderRadius: radius.md,
+                        borderRadius: radius.lg,
+                        boxShadow: isSelected
+                          ? `0 2px 8px ${colors.primary}40`
+                          : '0 1px 3px rgba(0,0,0,0.06)',
                       },
                     ]}
                   >
-                    <Text style={{ fontSize: 15 }}>{icon}</Text>
+                    <Text style={{ fontSize: 20 }}>{icon}</Text>
                     <View>
                       <Text
                         style={{
-                          color: isSelected ? colors.primaryForeground : colors.textPrimary,
-                          fontWeight: isSelected ? '600' : '500',
+                          color: isSelected ? '#FFFFFF' : colors.textPrimary,
+                          fontWeight: isSelected ? '700' : '500',
                           fontSize: 13,
                         }}
                       >
@@ -442,8 +498,8 @@ export default function AddTransactionScreen() {
                       </Text>
                       <Text
                         style={{
-                          color: isSelected ? 'rgba(255,255,255,0.8)' : colors.textTertiary,
-                          fontSize: 10,
+                          color: isSelected ? 'rgba(255,255,255,0.72)' : colors.textTertiary,
+                          fontSize: 11,
                         }}
                       >
                         {formatMoneyDisplay(acc.balance, acc.currency)}
@@ -455,19 +511,28 @@ export default function AddTransactionScreen() {
             </ScrollView>
           </View>
 
-          {/* Destination Selector if Transfer */}
+          {/* Destination Selector (Transfer) */}
           {mode === 'TRANSFER' && (
-            <View style={{ gap: spacing.xs }}>
-              <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>
-                To Destination Account
-              </Text>
+            <View style={{ gap: spacing.sm }}>
+              <View style={styles.sectionLabelRow}>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+                  To Account
+                </Text>
+                {selectedDestination && (
+                  <Text style={[styles.sectionSelected, { color: colors.primary }]}>
+                    {getAccountIcon(selectedDestination.type)} {selectedDestination.name}
+                  </Text>
+                )}
+              </View>
               {destinationError && (
-                <Text style={{ color: colors.danger, fontSize: 12 }}>⚠️ {destinationError}</Text>
+                <Text style={[styles.fieldError, { color: colors.danger }]}>
+                  ⚠️ {destinationError}
+                </Text>
               )}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: spacing.xs }}
+                contentContainerStyle={{ gap: spacing.sm }}
               >
                 {availableDestinations.map((acc) => {
                   const isSelected = selectedDestination?.id === acc.id;
@@ -480,20 +545,23 @@ export default function AddTransactionScreen() {
                         if (submitted) setSubmitted(false);
                       }}
                       style={[
-                        styles.chip,
+                        styles.accountChip,
                         {
                           backgroundColor: isSelected ? colors.primary : colors.surface,
                           borderColor: isSelected ? colors.primary : colors.border,
-                          borderRadius: radius.md,
+                          borderRadius: radius.lg,
+                          boxShadow: isSelected
+                            ? `0 2px 8px ${colors.primary}40`
+                            : '0 1px 3px rgba(0,0,0,0.06)',
                         },
                       ]}
                     >
-                      <Text style={{ fontSize: 15 }}>{icon}</Text>
+                      <Text style={{ fontSize: 20 }}>{icon}</Text>
                       <View>
                         <Text
                           style={{
-                            color: isSelected ? colors.primaryForeground : colors.textPrimary,
-                            fontWeight: isSelected ? '600' : '500',
+                            color: isSelected ? '#FFFFFF' : colors.textPrimary,
+                            fontWeight: isSelected ? '700' : '500',
                             fontSize: 13,
                           }}
                         >
@@ -501,8 +569,8 @@ export default function AddTransactionScreen() {
                         </Text>
                         <Text
                           style={{
-                            color: isSelected ? 'rgba(255,255,255,0.8)' : colors.textTertiary,
-                            fontSize: 10,
+                            color: isSelected ? 'rgba(255,255,255,0.72)' : colors.textTertiary,
+                            fontSize: 11,
                           }}
                         >
                           {formatMoneyDisplay(acc.balance, acc.currency)}
@@ -515,23 +583,17 @@ export default function AddTransactionScreen() {
             </View>
           )}
 
-          {/* 4. Date Shortcut Row */}
-          <View style={{ gap: spacing.xs }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <Text style={[typography.captionMedium, { color: colors.textSecondary }]}>Date</Text>
-              <Text style={[typography.micro, { color: colors.textTertiary }]}>{date}</Text>
+          {/* Date Shortcut Row */}
+          <View style={{ gap: spacing.sm }}>
+            <View style={styles.sectionLabelRow}>
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Date</Text>
+              <Text style={[styles.sectionSelected, { color: colors.textTertiary }]}>{date}</Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               {[
-                { label: 'Today', val: todayIsoDate() },
+                { label: '📅 Today', val: todayIsoDate() },
                 {
-                  label: 'Yesterday',
+                  label: '⏪ Yesterday',
                   val: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
                 },
               ].map((d) => {
@@ -544,16 +606,16 @@ export default function AddTransactionScreen() {
                       styles.dateChip,
                       {
                         backgroundColor: isSelected ? colors.surfaceElevated : colors.surface,
-                        borderColor: isSelected ? colors.primary : colors.border,
+                        borderColor: isSelected ? modeColor : colors.border,
                         borderRadius: radius.pill,
                       },
                     ]}
                   >
                     <Text
                       style={{
-                        color: isSelected ? colors.primary : colors.textSecondary,
-                        fontSize: 12,
-                        fontWeight: isSelected ? '600' : '400',
+                        color: isSelected ? modeColor : colors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: isSelected ? '700' : '400',
                       }}
                     >
                       {d.label}
@@ -572,43 +634,53 @@ export default function AddTransactionScreen() {
                   },
                 ]}
               >
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Custom Date...</Text>
+                <Text style={{ color: colors.textTertiary, fontSize: 13 }}>Custom…</Text>
               </Pressable>
             </View>
           </View>
 
-          {/* 5. Collapsible "More Details" Toggle */}
+          {/* More Details toggle */}
           <Pressable
             onPress={() => setShowAdvanced((prev) => !prev)}
-            style={{
-              paddingVertical: 8,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-            }}
+            style={[
+              styles.moreDetailsBtn,
+              {
+                backgroundColor: colors.surfaceElevated,
+                borderColor: colors.border,
+                borderRadius: radius.lg,
+              },
+            ]}
           >
-            <Text style={[typography.captionMedium, { color: colors.primary }]}>
-              {showAdvanced ? '▴ Hide Extra Details' : '▾ More Details (Merchant, Note, Date)'}
+            <Text style={{ fontSize: 14 }}>{showAdvanced ? '▴' : '▾'}</Text>
+            <Text style={[styles.moreDetailsLabel, { color: colors.primary }]}>
+              {showAdvanced ? 'Hide Details' : 'More Details  (Merchant, Note, Custom Date)'}
             </Text>
           </Pressable>
 
-          {/* Advanced Details Accordion */}
+          {/* Advanced Details */}
           {showAdvanced && (
-            <Card style={{ gap: spacing.md, backgroundColor: colors.surfaceElevated }}>
+            <Animated.View
+              style={[
+                styles.advancedCard,
+                {
+                  backgroundColor: colors.surfaceElevated,
+                  borderColor: colors.border,
+                  borderRadius: radius.xl,
+                  gap: spacing.md,
+                },
+              ]}
+            >
               <DatePickerInput label="Custom Date" value={date} onChangeDate={setDate} />
-
               {mode !== 'TRANSFER' && (
                 <Input
                   label="Merchant / Payee (Optional)"
-                  placeholder="e.g. Star Kebabs, Netflix, Supermarket"
+                  placeholder="e.g. Pathao, Netflix, Supermarket"
                   value={merchantName}
                   onChangeText={setMerchantName}
                   clearable
                   onClear={() => setMerchantName('')}
                 />
               )}
-
               <TextArea
                 label="Note (Optional)"
                 placeholder="Dinner with team, office split..."
@@ -618,10 +690,15 @@ export default function AddTransactionScreen() {
                 clearable
                 onClear={() => setNote('')}
               />
-            </Card>
+            </Animated.View>
           )}
+        </ScrollView>
 
-          {/* 6. Dominant, Big One-Tap Save Action Button */}
+        {/* ── STICKY SAVE FOOTER ─────────────────────────────────────── */}
+        <SafeAreaView
+          edges={['bottom']}
+          style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}
+        >
           <Button
             label={savedSuccess ? '✓ Saved!' : busy ? 'Saving...' : modeActionLabel}
             loading={busy}
@@ -629,54 +706,201 @@ export default function AddTransactionScreen() {
             size="lg"
             variant={savedSuccess ? 'secondary' : 'primary'}
           />
-        </ScrollView>
+        </SafeAreaView>
       </KeyboardAvoidingView>
-    </Screen>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  amountCard: {
-    padding: 16,
-    gap: 8,
+  safeArea: {
+    flex: 1,
   },
-  amountInputRow: {
+  // Hero
+  hero: {
+    gap: 0,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+  heroTitleGroup: {
+    gap: 2,
+  },
+  heroEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.65)',
+    letterSpacing: 1.5,
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Mode switcher
+  modeSwitcher: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 3,
+    gap: 2,
+  },
+  modeTab: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
-  currencySymbol: {
+  modeTabActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  // Amount
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  amountPrefix: {
     fontSize: 28,
     fontWeight: '700',
+    color: 'rgba(255,255,255,0.75)',
   },
-  bigAmountText: {
+  currencyCode: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.75)',
+  },
+  amountInput: {
     flex: 1,
-    fontSize: 36,
+    fontSize: 42,
     fontWeight: '800',
+    color: '#FFFFFF',
     paddingVertical: 0,
+    letterSpacing: -1,
+  },
+  quickRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
   },
   quickChip: {
-    paddingVertical: 6,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     paddingHorizontal: 12,
-    borderWidth: 1,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
-  chip: {
+  quickChipText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  heroError: {
+    color: '#FCA5A5',
+    fontSize: 12,
+    marginTop: 6,
+    fontWeight: '600',
+  },
+  projectionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginTop: 10,
+    gap: 2,
+  },
+  projectionText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  projectionValue: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  // Form body
+  sectionLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  sectionSelected: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  fieldError: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  selectorChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 9,
-    paddingHorizontal: 13,
-    borderWidth: 1,
-  },
-  dateChip: {
-    paddingVertical: 7,
+    paddingVertical: 10,
     paddingHorizontal: 14,
     borderWidth: 1,
   },
-  projectionRow: {
+  accountChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    minWidth: 120,
+  },
+  dateChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+  },
+  moreDetailsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    paddingTop: 4,
+    paddingVertical: 12,
+    borderWidth: 1,
+  },
+  moreDetailsLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  advancedCard: {
+    padding: 16,
+    borderWidth: 1,
+  },
+  // Footer
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderTopWidth: 1,
   },
 });

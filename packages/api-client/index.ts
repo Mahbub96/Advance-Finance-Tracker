@@ -9,8 +9,8 @@ import { DEFAULT_API_URL } from '@personal-finance/config';
 
 export interface HealthCheckResult {
   status: 'ok' | 'degraded' | 'error';
-  timestamp: string;
-  uptime: number;
+  timestamp?: string;
+  uptime?: number;
 }
 
 export interface RegisterPayload {
@@ -38,7 +38,7 @@ export class ApiClient {
   constructor(config: ApiClientConfig = {}) {
     // Default fallback to centrally configured API URL
     this.baseUrl = config.baseUrl?.replace(/\/$/, '') || DEFAULT_API_URL;
-    this.timeoutMs = config.timeoutMs ?? 3000;
+    this.timeoutMs = config.timeoutMs ?? 10000;
     this.getAuthToken = config.getAuthToken;
   }
 

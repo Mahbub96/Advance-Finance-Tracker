@@ -11,6 +11,7 @@ import { ScrollScreen } from '../../src/components/Screen';
 import { SectionHeader } from '../../src/components/SectionHeader';
 import { SegmentedControl } from '../../src/components/SegmentedControl';
 import { StatCard } from '../../src/components/StatCard';
+import { IntelligenceSkeleton } from '../../src/components/skeletons/IntelligenceSkeleton';
 import { TrendLineChart } from '../../src/components/charts/TrendLineChart';
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useBudgets } from '../../src/hooks/use-budgets';
@@ -64,7 +65,7 @@ const QUICK_PROMPTS = [
 
 export default function IntelligenceScreen() {
   const { colors, typography, spacing, radius } = useTokens();
-  const { forecast, healthScore, insights } = useIntelligence();
+  const { forecast, healthScore, insights, loading } = useIntelligence();
   const { accounts, totalBalance } = useAccounts();
   const { budgets } = useBudgets();
   const { settings } = useSettings();
@@ -81,6 +82,10 @@ export default function IntelligenceScreen() {
   useEffect(() => {
     void analytics.getDailySpendingTrajectory().then(setTrajectoryPoints);
   }, [analytics, nonce]);
+
+  if (loading) {
+    return <IntelligenceSkeleton />;
+  }
 
   const currency = settings?.baseCurrency ?? 'BDT';
   const userName = settings?.displayName ?? 'Ahmed';

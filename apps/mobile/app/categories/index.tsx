@@ -7,6 +7,7 @@ import { Card } from '../../src/components/Card';
 import { EmptyState } from '../../src/components/EmptyState';
 import { ScrollScreen } from '../../src/components/Screen';
 import { SegmentedControl } from '../../src/components/SegmentedControl';
+import { CategoriesSkeleton } from '../../src/components/skeletons/CategoriesSkeleton';
 import { useCategories } from '../../src/hooks/use-categories';
 import { useTokens } from '../../src/theme/tokens';
 
@@ -14,7 +15,7 @@ type FilterType = 'ALL' | 'EXPENSE' | 'INCOME';
 
 export default function CategoriesListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
-  const { categories } = useCategories(true);
+  const { categories, loading } = useCategories(true);
   const router = useRouter();
 
   const [filter, setFilter] = useState<FilterType>('ALL');
@@ -32,6 +33,10 @@ export default function CategoriesListScreen() {
     }),
     [categories],
   );
+
+  if (loading) {
+    return <CategoriesSkeleton />;
+  }
 
   const filterOptions = [
     { id: 'ALL' as const, label: 'All', count: counts.ALL },

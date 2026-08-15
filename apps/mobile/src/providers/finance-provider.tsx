@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { View, ActivityIndicator } from 'react-native';
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { AppSplashScreen } from '../components/AppSplashScreen';
 import { getDatabase } from '../database/client';
 import { AccountRepository } from '../repositories/account-repository';
 import { BudgetRepository } from '../repositories/budget-repository';
@@ -196,18 +196,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   }, [value]);
 
   if (!value) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: '#0B0F19',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator size="large" color="#2563EB" />
-      </View>
-    );
+    return <AppSplashScreen statusText="Connecting encrypted SQLite engine..." />;
   }
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;

@@ -1,10 +1,22 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { FinanceProvider } from '../src/providers/finance-provider';
 import { ThemeProvider, useThemeContext } from '../src/theme/theme-context';
 
+void SplashScreen.preventAutoHideAsync().catch(() => {
+  /* ignore */
+});
+
 function NavigationStack() {
   const { isDark, colors } = useThemeContext();
+
+  useEffect(() => {
+    void SplashScreen.hideAsync().catch(() => {
+      /* ignore */
+    });
+  }, []);
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />

@@ -1,10 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
+import { DeleteConfirmModal } from '../../src/components/DeleteConfirmModal';
 import { EmptyState } from '../../src/components/EmptyState';
 import { Input } from '../../src/components/Input';
 import { ScrollScreen } from '../../src/components/Screen';
 import { SegmentedControl } from '../../src/components/SegmentedControl';
+import { TransactionsSkeleton } from '../../src/components/skeletons/TransactionsSkeleton';
 import { TransactionRow } from '../../src/features/transactions/components/TransactionRow';
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useTransactions } from '../../src/hooks/use-transactions';
@@ -23,15 +25,31 @@ function getRelativeDateLabel(dateStr: string): string {
   return dateStr;
 }
 
+function buildTransactionSummary(tx: TransactionRecord): string {
+  return [
+    `Type: ${tx.type}`,
+    `Amount: ${tx.amount} ${tx.currency}`,
+    `Date: ${tx.transactionDate}`,
+    tx.merchantName ? `Merchant: ${tx.merchantName}` : null,
+    tx.note ? `Note: ${tx.note}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 export default function TransactionsScreen() {
   const { colors, typography, spacing } = useTokens();
-  const { transactions } = useTransactions();
+  const { transactions, loading: loadingTransactions } = useTransactions();
   const { accounts } = useAccounts();
   const finance = useFinance();
   const router = useRouter();
 
   const [filter, setFilter] = useState<FilterType>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Delete confirm state
+  const [pendingDeleteTx, setPendingDeleteTx] = useState<TransactionRecord | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const visible = useMemo(() => {
     let list = transactions.filter((tx) => tx.transferLeg !== 'IN');
@@ -72,12 +90,28 @@ export default function TransactionsScreen() {
     };
   }, [transactions]);
 
+  if (loadingTransactions) {
+    return <TransactionsSkeleton />;
+  }
+
   const filterOptions = [
     { id: 'ALL' as const, label: 'All', count: counts.ALL },
     { id: 'EXPENSE' as const, label: 'Expenses', count: counts.EXPENSE },
     { id: 'INCOME' as const, label: 'Income', count: counts.INCOME },
     { id: 'TRANSFER' as const, label: 'Transfer', count: counts.TRANSFER },
   ];
+
+  const handleDeleteConfirm = async () => {
+    if (!pendingDeleteTx) return;
+    setDeleteLoading(true);
+    try {
+      await finance.transactions.softDelete(pendingDeleteTx.id);
+      finance.refresh();
+    } finally {
+      setDeleteLoading(false);
+      setPendingDeleteTx(null);
+    }
+  };
 
   return (
     <ScrollScreen>
@@ -133,39 +167,28 @@ export default function TransactionsScreen() {
                   key={tx.id}
                   tx={tx}
                   accountName={accounts.find((a) => a.id === tx.accountId)?.name}
-                  onPress={() => {
-                    const desc = [
-                      `Type: ${tx.type}`,
-                      `Amount: ${tx.amount} ${tx.currency}`,
-                      `Date: ${tx.transactionDate}`,
-                      tx.merchantName ? `Merchant: ${tx.merchantName}` : null,
-                      tx.note ? `Note: ${tx.note}` : null,
-                    ]
-                      .filter(Boolean)
-                      .join('\n');
-
-                    // Prompt action
-                    import('react-native').then(({ Alert }) => {
-                      Alert.alert('Transaction Details', desc, [
-                        { text: 'Close', style: 'cancel' },
-                        {
-                          text: 'Delete',
-                          style: 'destructive',
-                          onPress: () => {
-                            finance.transactions.softDelete(tx.id).then(() => {
-                              finance.refresh();
-                            });
-                          },
-                        },
-                      ]);
-                    });
-                  }}
+                  onPress={() => setPendingDeleteTx(tx)}
                 />
               ))}
             </View>
           ))
         )}
       </View>
+
+      {/* Delete confirmation modal */}
+      <DeleteConfirmModal
+        visible={!!pendingDeleteTx}
+        title="Delete Transaction?"
+        message={
+          pendingDeleteTx
+            ? `${buildTransactionSummary(pendingDeleteTx)}\n\nThis entry will be soft-deleted and removed from your activity log.`
+            : ''
+        }
+        deleteLabel="Delete Transaction"
+        loading={deleteLoading}
+        onConfirm={() => void handleDeleteConfirm()}
+        onCancel={() => setPendingDeleteTx(null)}
+      />
     </ScrollScreen>
   );
 }

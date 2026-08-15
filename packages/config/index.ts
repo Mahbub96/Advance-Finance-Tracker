@@ -4,13 +4,13 @@
  * Change the host, port, or protocol here to reflect across the entire app.
  * =======================================================================
  */
-export const SERVER_HOST = '140.245.217.109';
-export const SERVER_PORT = 5500;
+export const SERVER_HOST = 'finance-tracker-api.mahbub.dev';
+export const SERVER_PORT = 443;
 export const API_VERSION_PREFIX = '/api/v1';
 
 export const DEFAULT_API_HOST = SERVER_HOST;
 export const DEFAULT_API_PORT = SERVER_PORT;
-export const DEFAULT_API_URL = `http://${SERVER_HOST}:${SERVER_PORT}${API_VERSION_PREFIX}`;
+export const DEFAULT_API_URL = `https://${SERVER_HOST}${API_VERSION_PREFIX}`;
 
 export interface AppEnvironment {
   nodeEnv: 'development' | 'production' | 'test';

@@ -5,14 +5,19 @@ import { useFinance } from '../providers/finance-provider';
 export function useGoals() {
   const { goals, nonce } = useFinance();
   const [items, setItems] = useState<GoalSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    setItems(await goals.summaries());
+    try {
+      setItems(await goals.summaries());
+    } finally {
+      setLoading(false);
+    }
   }, [goals]);
 
   useEffect(() => {
     void load();
   }, [load, nonce]);
 
-  return { goals: items, reload: load };
+  return { goals: items, loading, reload: load };
 }

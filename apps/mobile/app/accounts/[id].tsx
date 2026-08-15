@@ -10,9 +10,11 @@ import { Pressable, Text, View, StyleSheet } from 'react-native';
 import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { DeleteConfirmModal } from '../../src/components/DeleteConfirmModal';
 import { EmptyState } from '../../src/components/EmptyState';
 import { ScrollScreen } from '../../src/components/Screen';
 import { SectionHeader } from '../../src/components/SectionHeader';
+import { SkeletonBox, SkeletonText } from '../../src/components/Skeleton';
 import { StatCard } from '../../src/components/StatCard';
 import { TransactionRow } from '../../src/features/transactions/components/TransactionRow';
 import type { AccountRecord, TransactionRecord } from '../../src/database/records';
@@ -45,6 +47,8 @@ export default function AccountDetailScreen() {
 
   const [account, setAccount] = useState<AccountRecord | null>(null);
   const [txs, setTxs] = useState<TransactionRecord[]>([]);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [archiveBusy, setArchiveBusy] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -107,14 +111,62 @@ export default function AccountDetailScreen() {
   if (!account) {
     return (
       <ScrollScreen>
-        <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 40 }}>
-          Loading account details…
-        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <SkeletonText width={60} height={20} />
+          <SkeletonBox width={70} height={22} borderRadius={radius.pill} />
+        </View>
+
+        {/* Hero Card Skeleton */}
+        <Card style={{ backgroundColor: colors.surfaceElevated, borderColor: colors.border, gap: spacing.md, padding: spacing.lg }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+            <SkeletonBox width={48} height={48} borderRadius={radius.md} />
+            <View style={{ flex: 1, gap: 6 }}>
+              <SkeletonText width="55%" height={20} />
+              <SkeletonText width="35%" height={13} />
+            </View>
+          </View>
+          <View style={{ gap: 4, marginTop: spacing.xs }}>
+            <SkeletonText width={90} height={12} />
+            <SkeletonText width={180} height={32} />
+          </View>
+        </Card>
+
+        {/* Performance Metric StatCards Skeleton */}
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          {[1, 2, 3].map((i) => (
+            <Card key={i} style={{ flex: 1, backgroundColor: colors.surface, padding: spacing.md, gap: 4 }}>
+              <SkeletonText width={44} height={11} />
+              <SkeletonText width={70} height={15} />
+            </Card>
+          ))}
+        </View>
+
+        {/* Action button skeleton */}
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <SkeletonBox width="60%" height={44} borderRadius={radius.md} />
+          <SkeletonBox width="35%" height={44} borderRadius={radius.md} />
+        </View>
       </ScrollScreen>
     );
   }
 
   const icon = getAccountIcon(account.type);
+
+  const handleArchiveToggle = async () => {
+    setArchiveBusy(true);
+    try {
+      if (account.isArchived) {
+        await accounts.restore(account.id);
+      } else {
+        await accounts.archive(account.id);
+      }
+      refresh();
+      setShowArchiveConfirm(false);
+      router.back();
+    } finally {
+      setArchiveBusy(false);
+    }
+  };
 
   return (
     <ScrollScreen>
@@ -207,12 +259,12 @@ export default function AccountDetailScreen() {
           variant="outline"
           size="md"
           onPress={() => {
-            void (
-              account.isArchived ? accounts.restore(account.id) : accounts.archive(account.id)
-            ).then(() => {
-              refresh();
-              router.back();
-            });
+            if (account.isArchived) {
+              // Restore is safe — no warning needed
+              void handleArchiveToggle();
+            } else {
+              setShowArchiveConfirm(true);
+            }
           }}
         />
       </View>
@@ -242,6 +294,17 @@ export default function AccountDetailScreen() {
           </View>
         )}
       </View>
+
+      {/* Archive confirmation modal */}
+      <DeleteConfirmModal
+        visible={showArchiveConfirm}
+        title="Archive Account?"
+        message={`"${account.name}" will be archived and hidden from the accounts list. Your transaction history is preserved.`}
+        deleteLabel="Archive Account"
+        loading={archiveBusy}
+        onConfirm={() => void handleArchiveToggle()}
+        onCancel={() => setShowArchiveConfirm(false)}
+      />
     </ScrollScreen>
   );
 }

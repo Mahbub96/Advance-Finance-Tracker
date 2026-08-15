@@ -397,16 +397,16 @@ export default function MoreScreen() {
               variant="secondary"
               size="sm"
               onPress={async () => {
-                try {
-                  const res = await finance.api.health();
+                const isSynced = await finance.syncWithApi();
+                if (isSynced) {
                   Alert.alert(
-                    'Sync Active',
-                    `API server is online (Uptime: ${Math.round(res.uptime)}s). Local changes synced.`,
+                    'Cloud Sync Successful',
+                    'Cloud ledger synchronized with API server. All local transactions and balances are up to date.',
                   );
-                } catch {
+                } else {
                   Alert.alert(
-                    'Offline Mode',
-                    'Local SQLite database is active. Sync will retry when server is reachable.',
+                    'Sync Queued (Offline Mode)',
+                    'Could not reach API server. Local changes are securely saved on-device and will auto-sync when connection is restored.',
                   );
                 }
               }}

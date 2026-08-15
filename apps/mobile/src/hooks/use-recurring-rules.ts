@@ -5,14 +5,19 @@ import { useFinance } from '../providers/finance-provider';
 export function useRecurringRules() {
   const { recurringRules, nonce } = useFinance();
   const [items, setItems] = useState<RecurringRuleSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    setItems(await recurringRules.summaries());
+    try {
+      setItems(await recurringRules.summaries());
+    } finally {
+      setLoading(false);
+    }
   }, [recurringRules]);
 
   useEffect(() => {
     void load();
   }, [load, nonce]);
 
-  return { recurringRules: items, reload: load };
+  return { recurringRules: items, loading, reload: load };
 }

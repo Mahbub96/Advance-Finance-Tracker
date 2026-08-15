@@ -8,6 +8,8 @@ import { Card } from '../../src/components/Card';
 import { EmptyState } from '../../src/components/EmptyState';
 import { ScrollScreen } from '../../src/components/Screen';
 import { SegmentedControl } from '../../src/components/SegmentedControl';
+import { DeleteConfirmModal } from '../../src/components/DeleteConfirmModal';
+import { RecurringSkeleton } from '../../src/components/skeletons/RecurringSkeleton';
 import { useRecurringRules } from '../../src/hooks/use-recurring-rules';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
@@ -43,13 +45,18 @@ type RecurringFilter = 'UPCOMING' | 'ALL';
 
 export default function RecurringListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
-  const { recurringRules, reload } = useRecurringRules();
+  const { recurringRules, loading, reload } = useRecurringRules();
   const { recurringRules: ruleService, refresh } = useFinance();
   const { settings } = useSettings();
   const router = useRouter();
 
   const currency = settings?.baseCurrency ?? 'BDT';
   const [activeTab, setActiveTab] = useState<RecurringFilter>('UPCOMING');
+
+  // Delete confirm state
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingName, setDeletingName] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const visibleRules = useMemo(() => {
     if (activeTab === 'UPCOMING') {
@@ -70,6 +77,10 @@ export default function RecurringListScreen() {
     }, parseMoney('0'));
     return moneyString(total);
   }, [recurringRules]);
+
+  if (loading) {
+    return <RecurringSkeleton />;
+  }
 
   const filterOptions = [
     {
@@ -96,10 +107,23 @@ export default function RecurringListScreen() {
     await reload();
   };
 
-  const handleDelete = async (id: string) => {
-    await ruleService.delete(id);
-    refresh();
-    await reload();
+  const confirmDelete = (id: string, name: string) => {
+    setDeletingId(id);
+    setDeletingName(name);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    setDeleteLoading(true);
+    try {
+      await ruleService.delete(deletingId);
+      refresh();
+      await reload();
+    } finally {
+      setDeleteLoading(false);
+      setDeletingId(null);
+      setDeletingName('');
+    }
   };
 
   return (
@@ -243,7 +267,7 @@ export default function RecurringListScreen() {
                     label="Delete"
                     variant="ghost"
                     size="sm"
-                    onPress={() => void handleDelete(rule.id)}
+                    onPress={() => confirmDelete(rule.id, rule.name)}
                   />
                 </View>
               </Card>
@@ -251,6 +275,19 @@ export default function RecurringListScreen() {
           })
         )}
       </View>
+      {/* Delete confirmation modal */}
+      <DeleteConfirmModal
+        visible={!!deletingId}
+        title="Delete Schedule?"
+        message={`"${deletingName}" will be soft-deleted and stop generating future entries. Existing transactions are unaffected.`}
+        deleteLabel="Delete Schedule"
+        loading={deleteLoading}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => {
+          setDeletingId(null);
+          setDeletingName('');
+        }}
+      />
     </ScrollScreen>
   );
 }

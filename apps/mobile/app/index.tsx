@@ -1,27 +1,24 @@
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AppSplashScreen } from '../src/components/AppSplashScreen';
 import { useSettings } from '../src/hooks/use-settings';
 import { useFinance } from '../src/providers/finance-provider';
-import { useTokens } from '../src/theme/tokens';
 
 export default function Index() {
-  const { colors } = useTokens();
   useFinance();
   const { settings, ready } = useSettings();
+  const [minSplashElapsed, setMinSplashElapsed] = useState(false);
 
-  if (!ready) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: colors.background,
-        }}
-      >
-        <ActivityIndicator />
-      </View>
-    );
+  useEffect(() => {
+    // Ensure the user experiences a smooth, premium brand introduction rather than a 10ms flash
+    const timer = setTimeout(() => {
+      setMinSplashElapsed(true);
+    }, 900);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!ready || !minSplashElapsed) {
+    return <AppSplashScreen statusText="Loading profile & workspace..." />;
   }
 
   if (!settings || !settings.onboardingCompleted) {

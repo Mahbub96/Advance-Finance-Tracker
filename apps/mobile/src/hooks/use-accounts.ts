@@ -7,15 +7,20 @@ export function useAccounts(includeArchived = false) {
   const { accounts, transactions, nonce } = useFinance();
   const [items, setItems] = useState<AccountRecord[]>([]);
   const [txByAccount, setTxByAccount] = useState<Record<string, TransactionRecord[]>>({});
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const listed = await accounts.list(includeArchived);
-    const map: Record<string, TransactionRecord[]> = {};
-    for (const account of listed) {
-      map[account.id] = await transactions.listByAccount(account.id);
+    try {
+      const listed = await accounts.list(includeArchived);
+      const map: Record<string, TransactionRecord[]> = {};
+      for (const account of listed) {
+        map[account.id] = await transactions.listByAccount(account.id);
+      }
+      setItems(listed);
+      setTxByAccount(map);
+    } finally {
+      setLoading(false);
     }
-    setItems(listed);
-    setTxByAccount(map);
   }, [accounts, transactions, includeArchived]);
 
   useEffect(() => {
@@ -36,7 +41,7 @@ export function useAccounts(includeArchived = false) {
     '0.00',
   );
 
-  return { accounts: withBalances, totalBalance, reload: load };
+  return { accounts: withBalances, totalBalance, loading, reload: load };
 }
 
 export function useFormatMoney(currency: string, locale = 'en-US') {

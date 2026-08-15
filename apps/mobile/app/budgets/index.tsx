@@ -5,9 +5,11 @@ import { Text, View, Pressable } from 'react-native';
 import { Badge, type BadgeVariant } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { DeleteConfirmModal } from '../../src/components/DeleteConfirmModal';
 import { EmptyState } from '../../src/components/EmptyState';
 import { ProgressBar } from '../../src/components/ProgressBar';
 import { ScrollScreen } from '../../src/components/Screen';
+import { BudgetsSkeleton } from '../../src/components/skeletons/BudgetsSkeleton';
 import { useBudgets } from '../../src/hooks/use-budgets';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
@@ -36,7 +38,7 @@ const MONTHS = [
 
 export default function BudgetsListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
-  const { budgets, reload } = useBudgets();
+  const { budgets, loading, reload } = useBudgets();
   const { budgets: budgetService, refresh } = useFinance();
   const { settings } = useSettings();
   const router = useRouter();
@@ -45,25 +47,10 @@ export default function BudgetsListScreen() {
   const currentYear = new Date().getFullYear();
   const currency = settings?.baseCurrency ?? 'BDT';
 
-  const handlePrevMonth = () => {
-    setCurrentMonthIndex((prev) => (prev === 0 ? 11 : prev - 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentMonthIndex((prev) => (prev === 11 ? 0 : prev + 1));
-  };
-
-  const handleArchive = async (id: string) => {
-    await budgetService.archive(id);
-    refresh();
-    await reload();
-  };
-
-  const handleDelete = async (id: string) => {
-    await budgetService.delete(id);
-    refresh();
-    await reload();
-  };
+  // Delete confirm state
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingName, setDeletingName] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Aggregated totals across all active budgets
   const summary = useMemo(() => {
@@ -91,6 +78,43 @@ export default function BudgetsListScreen() {
       isExceeded: totalSpent.gt(totalTarget),
     };
   }, [budgets]);
+
+  const handlePrevMonth = () => {
+    setCurrentMonthIndex((prev) => (prev === 0 ? 11 : prev - 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonthIndex((prev) => (prev === 11 ? 0 : prev + 1));
+  };
+
+  const handleArchive = async (id: string) => {
+    await budgetService.archive(id);
+    refresh();
+    await reload();
+  };
+
+  const confirmDelete = (id: string, name: string) => {
+    setDeletingId(id);
+    setDeletingName(name);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    setDeleteLoading(true);
+    try {
+      await budgetService.delete(deletingId);
+      refresh();
+      await reload();
+    } finally {
+      setDeleteLoading(false);
+      setDeletingId(null);
+      setDeletingName('');
+    }
+  };
+
+  if (loading) {
+    return <BudgetsSkeleton />;
+  }
 
   return (
     <ScrollScreen>
@@ -301,7 +325,7 @@ export default function BudgetsListScreen() {
                     label="Delete"
                     variant="ghost"
                     size="sm"
-                    onPress={() => void handleDelete(budget.id)}
+                    onPress={() => confirmDelete(budget.id, budget.name)}
                   />
                 </View>
               </Card>
@@ -309,6 +333,20 @@ export default function BudgetsListScreen() {
           })
         )}
       </View>
+
+      {/* Delete confirmation modal */}
+      <DeleteConfirmModal
+        visible={!!deletingId}
+        title="Delete Budget?"
+        message={`"${deletingName}" and all its tracking data will be soft-deleted. Your past transactions are unaffected.`}
+        deleteLabel="Delete Budget"
+        loading={deleteLoading}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => {
+          setDeletingId(null);
+          setDeletingName('');
+        }}
+      />
     </ScrollScreen>
   );
 }

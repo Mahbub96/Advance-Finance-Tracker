@@ -5,14 +5,19 @@ import { useFinance } from '../providers/finance-provider';
 export function useBudgets() {
   const { budgets, nonce } = useFinance();
   const [items, setItems] = useState<BudgetSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    setItems(await budgets.summaries());
+    try {
+      setItems(await budgets.summaries());
+    } finally {
+      setLoading(false);
+    }
   }, [budgets]);
 
   useEffect(() => {
     void load();
   }, [load, nonce]);
 
-  return { budgets: items, reload: load };
+  return { budgets: items, loading, reload: load };
 }

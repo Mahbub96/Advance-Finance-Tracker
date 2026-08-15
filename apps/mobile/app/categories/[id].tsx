@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { DeleteConfirmModal } from '../../src/components/DeleteConfirmModal';
 import { Input } from '../../src/components/Input';
 import { ScrollScreen } from '../../src/components/Screen';
+import { SkeletonBox, SkeletonText } from '../../src/components/Skeleton';
 import type { CategoryRecord } from '../../src/database/records';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
@@ -20,6 +22,10 @@ export default function EditCategoryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Archive confirm state
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [archiveBusy, setArchiveBusy] = useState(false);
+
   useEffect(() => {
     if (!id) return;
     void categories.get(id).then((item) => {
@@ -31,7 +37,19 @@ export default function EditCategoryScreen() {
   if (!category) {
     return (
       <ScrollScreen>
-        <Text style={{ color: colors.textSecondary }}>Loading category…</Text>
+        <View style={{ gap: 4 }}>
+          <SkeletonText width={100} height={12} />
+          <SkeletonText width={140} height={24} />
+        </View>
+
+        <Card style={{ gap: spacing.md, backgroundColor: colors.surfaceElevated, padding: spacing.lg }}>
+          <SkeletonText width={120} height={13} />
+          <SkeletonBox width="100%" height={44} borderRadius={radius.md} />
+          <SkeletonText width={150} height={13} />
+        </Card>
+
+        <SkeletonBox width="100%" height={48} borderRadius={radius.md} />
+        <SkeletonBox width="100%" height={44} borderRadius={radius.md} />
       </ScrollScreen>
     );
   }
@@ -57,7 +75,7 @@ export default function EditCategoryScreen() {
   };
 
   const handleToggleArchive = async () => {
-    setBusy(true);
+    setArchiveBusy(true);
     try {
       if (category.isArchived) {
         await categories.restore(category.id);
@@ -65,11 +83,12 @@ export default function EditCategoryScreen() {
         await categories.archive(category.id);
       }
       refresh();
+      setShowArchiveConfirm(false);
       router.back();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Could not update archive status');
     } finally {
-      setBusy(false);
+      setArchiveBusy(false);
     }
   };
 
@@ -121,8 +140,26 @@ export default function EditCategoryScreen() {
       <Button
         label={category.isArchived ? 'Restore Category' : 'Archive Category'}
         variant="secondary"
-        onPress={() => void handleToggleArchive()}
+        onPress={() => {
+          if (category.isArchived) {
+            // Restore is safe — no warning needed
+            void handleToggleArchive();
+          } else {
+            setShowArchiveConfirm(true);
+          }
+        }}
         size="md"
+      />
+
+      {/* Archive confirmation modal */}
+      <DeleteConfirmModal
+        visible={showArchiveConfirm}
+        title="Archive Category?"
+        message={`"${category.name}" will be archived and hidden from transaction forms. Existing transactions using this category are unaffected.`}
+        deleteLabel="Archive"
+        loading={archiveBusy}
+        onConfirm={() => void handleToggleArchive()}
+        onCancel={() => setShowArchiveConfirm(false)}
       />
     </ScrollScreen>
   );

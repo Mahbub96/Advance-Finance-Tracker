@@ -8,6 +8,7 @@ import { Card } from '../../src/components/Card';
 import { EmptyState } from '../../src/components/EmptyState';
 import { ScrollScreen } from '../../src/components/Screen';
 import { DonutChart, type DonutSegment } from '../../src/components/charts/DonutChart';
+import { AccountsSkeleton } from '../../src/components/skeletons/AccountsSkeleton';
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useTokens } from '../../src/theme/tokens';
@@ -33,7 +34,7 @@ const ACCOUNT_COLORS = ['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '
 
 export default function AccountsListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
-  const { accounts, totalBalance } = useAccounts(true);
+  const { accounts, totalBalance, loading } = useAccounts(true);
   const { settings } = useSettings();
   const router = useRouter();
 
@@ -58,6 +59,10 @@ export default function AccountsListScreen() {
       };
     });
   }, [accounts]);
+
+  if (loading) {
+    return <AccountsSkeleton />;
+  }
 
   return (
     <ScrollScreen>

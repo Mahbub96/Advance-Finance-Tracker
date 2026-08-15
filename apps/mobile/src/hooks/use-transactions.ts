@@ -5,14 +5,19 @@ import { useFinance } from '../providers/finance-provider';
 export function useTransactions() {
   const { transactions, nonce } = useFinance();
   const [items, setItems] = useState<TransactionRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    setItems(await transactions.list(200));
+    try {
+      setItems(await transactions.list(200));
+    } finally {
+      setLoading(false);
+    }
   }, [transactions]);
 
   useEffect(() => {
     void load();
   }, [load, nonce]);
 
-  return { transactions: items, reload: load };
+  return { transactions: items, loading, reload: load };
 }
