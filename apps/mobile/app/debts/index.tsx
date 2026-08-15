@@ -15,6 +15,7 @@ import { useAccounts } from '../../src/hooks/use-accounts';
 import { useDebts } from '../../src/hooks/use-debts';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
+import { useUndoDelete } from '../../src/providers/undo-delete-provider';
 import { useTokens } from '../../src/theme/tokens';
 import { DeleteConfirmModal } from '../../src/components/DeleteConfirmModal';
 
@@ -39,6 +40,7 @@ export default function DebtsListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
   const { debts, loading, reload } = useDebts();
   const { debts: debtService, refresh } = useFinance();
+  const { scheduleDelete, isPendingDelete } = useUndoDelete();
   const { accounts } = useAccounts();
   const { settings } = useSettings();
   const router = useRouter();
@@ -54,10 +56,15 @@ export default function DebtsListScreen() {
   // Delete confirm state
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingName, setDeletingName] = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const moneyOwedToYou = useMemo(() => debts.filter((d) => d.debt.type === 'LENT'), [debts]);
-  const moneyYouOwe = useMemo(() => debts.filter((d) => d.debt.type === 'BORROWED'), [debts]);
+  const moneyOwedToYou = useMemo(
+    () => debts.filter((d) => d.debt.type === 'LENT' && !isPendingDelete(d.debt.id)),
+    [debts, isPendingDelete],
+  );
+  const moneyYouOwe = useMemo(
+    () => debts.filter((d) => d.debt.type === 'BORROWED' && !isPendingDelete(d.debt.id)),
+    [debts, isPendingDelete],
+  );
 
   if (loading) {
     return <DebtsSkeleton />;
@@ -127,18 +134,22 @@ export default function DebtsListScreen() {
     setDeletingName(name);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingId) return;
-    setDeleteLoading(true);
-    try {
-      await debtService.delete(deletingId);
-      refresh();
-      await reload();
-    } finally {
-      setDeleteLoading(false);
-      setDeletingId(null);
-      setDeletingName('');
-    }
+    const idToDelete = deletingId;
+    const nameToDelete = deletingName;
+    setDeletingId(null);
+    setDeletingName('');
+
+    scheduleDelete({
+      id: idToDelete,
+      message: `Debt for "${nameToDelete}" deleted`,
+      onExecute: async () => {
+        await debtService.delete(idToDelete);
+        refresh();
+        await reload();
+      },
+    });
   };
 
   return (
@@ -477,8 +488,7 @@ export default function DebtsListScreen() {
         visible={!!deletingId}
         title="Delete Debt Record?"
         message={`The debt record for "${deletingName}" will be soft-deleted. Repayment history will be preserved but hidden.`}
-        deleteLabel="Delete Record"
-        loading={deleteLoading}
+        deleteLabel="Delete Debt"
         onConfirm={() => void handleDelete()}
         onCancel={() => {
           setDeletingId(null);

@@ -1,6 +1,6 @@
 import { TransactionType, formatMoneyDisplay, parseMoney } from '@personal-finance/types';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   KeyboardAvoidingView,
@@ -99,6 +99,21 @@ export default function AddTransactionScreen() {
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Reset form & unblock submission whenever this screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      setBusy(false);
+      setSavedSuccess(false);
+      setSubmitted(false);
+      if (params.mode === 'INCOME' || params.mode === 'TRANSFER' || params.mode === 'EXPENSE') {
+        setMode(params.mode);
+      }
+      if (params.initialAmount !== undefined) {
+        setAmount(params.initialAmount);
+      }
+    }, [params.mode, params.initialAmount]),
+  );
 
   const currency = settings?.baseCurrency ?? 'BDT';
   const modeConf = MODE_CONFIG[mode];
@@ -213,11 +228,18 @@ export default function AddTransactionScreen() {
       refresh();
       setSavedSuccess(true);
       setTimeout(() => {
+        setBusy(false);
+        setSavedSuccess(false);
+        setSubmitted(false);
+        setAmount('');
+        setMerchantName('');
+        setNote('');
         router.back();
-      }, 400);
+      }, 350);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Could not save transaction');
       setBusy(false);
+      setSavedSuccess(false);
     }
   };
 

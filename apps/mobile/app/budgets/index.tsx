@@ -13,6 +13,7 @@ import { BudgetsSkeleton } from '../../src/components/skeletons/BudgetsSkeleton'
 import { useBudgets } from '../../src/hooks/use-budgets';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
+import { useUndoDelete } from '../../src/providers/undo-delete-provider';
 import { useTokens } from '../../src/theme/tokens';
 
 function getRiskBadge(risk: string): { label: string; variant: BadgeVariant } {
@@ -40,6 +41,7 @@ export default function BudgetsListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
   const { budgets, loading, reload } = useBudgets();
   const { budgets: budgetService, refresh } = useFinance();
+  const { scheduleDelete, isPendingDelete } = useUndoDelete();
   const { settings } = useSettings();
   const router = useRouter();
 
@@ -50,15 +52,18 @@ export default function BudgetsListScreen() {
   // Delete confirm state
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingName, setDeletingName] = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const activeBudgets = useMemo(() => {
+    return budgets.filter((b) => !isPendingDelete(b.budget.id));
+  }, [budgets, isPendingDelete]);
 
   // Aggregated totals across all active budgets
   const summary = useMemo(() => {
-    if (budgets.length === 0) return null;
+    if (activeBudgets.length === 0) return null;
     let totalTarget = parseMoney('0');
     let totalSpent = parseMoney('0');
 
-    for (const b of budgets) {
+    for (const b of activeBudgets) {
       totalTarget = totalTarget.plus(parseMoney(b.budget.amount));
       totalSpent = totalSpent.plus(parseMoney(b.spent));
     }
@@ -77,7 +82,7 @@ export default function BudgetsListScreen() {
       percent,
       isExceeded: totalSpent.gt(totalTarget),
     };
-  }, [budgets]);
+  }, [activeBudgets]);
 
   const handlePrevMonth = () => {
     setCurrentMonthIndex((prev) => (prev === 0 ? 11 : prev - 1));
@@ -98,18 +103,22 @@ export default function BudgetsListScreen() {
     setDeletingName(name);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingId) return;
-    setDeleteLoading(true);
-    try {
-      await budgetService.delete(deletingId);
-      refresh();
-      await reload();
-    } finally {
-      setDeleteLoading(false);
-      setDeletingId(null);
-      setDeletingName('');
-    }
+    const idToDelete = deletingId;
+    const nameToDelete = deletingName;
+    setDeletingId(null);
+    setDeletingName('');
+
+    scheduleDelete({
+      id: idToDelete,
+      message: `Budget "${nameToDelete}" deleted`,
+      onExecute: async () => {
+        await budgetService.delete(idToDelete);
+        refresh();
+        await reload();
+      },
+    });
   };
 
   if (loading) {
@@ -213,16 +222,16 @@ export default function BudgetsListScreen() {
 
       {/* Category Budget List */}
       <View style={{ gap: spacing.md }}>
-        {budgets.length === 0 ? (
+        {activeBudgets.length === 0 ? (
           <EmptyState
             icon="🎯"
-            title="No budgets configured"
-            description="Create monthly limits to stay in control of dining, shopping, or overall expenses."
-            actionLabel="Add First Budget"
+            title="No budgets for this month"
+            description="Set a budget to track category limits and stay on target."
+            actionLabel="Create Budget"
             onAction={() => router.push('/budgets/new')}
           />
         ) : (
-          budgets.map(({ budget, category, spent, remaining, utilizationPercent, risk }) => {
+          activeBudgets.map(({ budget, category, spent, remaining, utilizationPercent, risk }) => {
             const { label, variant } = getRiskBadge(risk);
             const isExceeded = risk === 'EXCEEDED';
             const barColor =
@@ -340,7 +349,6 @@ export default function BudgetsListScreen() {
         title="Delete Budget?"
         message={`"${deletingName}" and all its tracking data will be soft-deleted. Your past transactions are unaffected.`}
         deleteLabel="Delete Budget"
-        loading={deleteLoading}
         onConfirm={() => void handleDelete()}
         onCancel={() => {
           setDeletingId(null);

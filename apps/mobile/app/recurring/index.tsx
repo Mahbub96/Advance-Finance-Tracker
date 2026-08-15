@@ -13,6 +13,7 @@ import { RecurringSkeleton } from '../../src/components/skeletons/RecurringSkele
 import { useRecurringRules } from '../../src/hooks/use-recurring-rules';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
+import { useUndoDelete } from '../../src/providers/undo-delete-provider';
 import { useTokens } from '../../src/theme/tokens';
 
 function getDueBadge(dueState: string, days: number): { label: string; variant: BadgeVariant } {
@@ -23,9 +24,9 @@ function getDueBadge(dueState: string, days: number): { label: string; variant: 
     return { label: 'DUE TODAY', variant: 'warning' };
   }
   if (days === 1) {
-    return { label: 'Tomorrow', variant: 'warning' };
+    return { label: 'DUE TOMORROW', variant: 'info' };
   }
-  return { label: `in ${days} days`, variant: 'neutral' };
+  return { label: `IN ${days} DAYS`, variant: 'neutral' };
 }
 
 function getRecurringIcon(name: string): string {
@@ -47,6 +48,7 @@ export default function RecurringListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
   const { recurringRules, loading, reload } = useRecurringRules();
   const { recurringRules: ruleService, refresh } = useFinance();
+  const { scheduleDelete, isPendingDelete } = useUndoDelete();
   const { settings } = useSettings();
   const router = useRouter();
 
@@ -56,18 +58,21 @@ export default function RecurringListScreen() {
   // Delete confirm state
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingName, setDeletingName] = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const activeRules = useMemo(() => {
+    return recurringRules.filter((r) => !isPendingDelete(r.rule.id));
+  }, [recurringRules, isPendingDelete]);
 
   const visibleRules = useMemo(() => {
     if (activeTab === 'UPCOMING') {
-      return recurringRules.filter((r) => r.rule.status === 'ACTIVE');
+      return activeRules.filter((r) => r.rule.status === 'ACTIVE');
     }
-    return recurringRules;
-  }, [recurringRules, activeTab]);
+    return activeRules;
+  }, [activeRules, activeTab]);
 
   // Compute total monthly commitments
   const totalMonthlyCommitment = useMemo(() => {
-    const active = recurringRules.filter((r) => r.rule.status === 'ACTIVE');
+    const active = activeRules.filter((r) => r.rule.status === 'ACTIVE');
     const total = active.reduce((sum, r) => {
       const amt = parseMoney(r.rule.amount);
       if (r.rule.frequency === 'DAILY') return sum.plus(amt.times(30));
@@ -76,7 +81,7 @@ export default function RecurringListScreen() {
       return sum.plus(amt);
     }, parseMoney('0'));
     return moneyString(total);
-  }, [recurringRules]);
+  }, [activeRules]);
 
   if (loading) {
     return <RecurringSkeleton />;
@@ -86,9 +91,9 @@ export default function RecurringListScreen() {
     {
       id: 'UPCOMING' as const,
       label: 'Upcoming',
-      count: recurringRules.filter((r) => r.rule.status === 'ACTIVE').length,
+      count: activeRules.filter((r) => r.rule.status === 'ACTIVE').length,
     },
-    { id: 'ALL' as const, label: 'All Rules', count: recurringRules.length },
+    { id: 'ALL' as const, label: 'All Rules', count: activeRules.length },
   ];
 
   const handleExecute = async (id: string) => {
@@ -112,18 +117,22 @@ export default function RecurringListScreen() {
     setDeletingName(name);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingId) return;
-    setDeleteLoading(true);
-    try {
-      await ruleService.delete(deletingId);
-      refresh();
-      await reload();
-    } finally {
-      setDeleteLoading(false);
-      setDeletingId(null);
-      setDeletingName('');
-    }
+    const idToDelete = deletingId;
+    const nameToDelete = deletingName;
+    setDeletingId(null);
+    setDeletingName('');
+
+    scheduleDelete({
+      id: idToDelete,
+      message: `Schedule "${nameToDelete}" deleted`,
+      onExecute: async () => {
+        await ruleService.delete(idToDelete);
+        refresh();
+        await reload();
+      },
+    });
   };
 
   return (
@@ -281,7 +290,6 @@ export default function RecurringListScreen() {
         title="Delete Schedule?"
         message={`"${deletingName}" will be soft-deleted and stop generating future entries. Existing transactions are unaffected.`}
         deleteLabel="Delete Schedule"
-        loading={deleteLoading}
         onConfirm={() => void handleDelete()}
         onCancel={() => {
           setDeletingId(null);

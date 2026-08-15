@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { FinanceProvider } from '../src/providers/finance-provider';
+import { UndoDeleteProvider } from '../src/providers/undo-delete-provider';
 import { ThemeProvider, useThemeContext } from '../src/theme/theme-context';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {
@@ -48,7 +49,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <FinanceProvider>
-        <NavigationStack />
+        <UndoDeleteProvider>
+          <NavigationStack />
+        </UndoDeleteProvider>
       </FinanceProvider>
     </ThemeProvider>
   );

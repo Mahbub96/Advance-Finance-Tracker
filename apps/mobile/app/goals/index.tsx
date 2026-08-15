@@ -1,6 +1,6 @@
 import { formatMoneyDisplay } from '@personal-finance/types';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal, Pressable, Text, View, StyleSheet } from 'react-native';
 import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
@@ -15,6 +15,7 @@ import { GoalsSkeleton } from '../../src/components/skeletons/GoalsSkeleton';
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useGoals } from '../../src/hooks/use-goals';
 import { useFinance } from '../../src/providers/finance-provider';
+import { useUndoDelete } from '../../src/providers/undo-delete-provider';
 import { useTokens } from '../../src/theme/tokens';
 
 function getGoalIcon(name: string): string {
@@ -36,6 +37,7 @@ export default function GoalsListScreen() {
   const { colors, typography, spacing, radius } = useTokens();
   const { goals, loading, reload } = useGoals();
   const { goals: goalService, refresh } = useFinance();
+  const { scheduleDelete, isPendingDelete } = useUndoDelete();
   const { accounts } = useAccounts();
   const router = useRouter();
 
@@ -48,13 +50,16 @@ export default function GoalsListScreen() {
   // Delete confirm state
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingName, setDeletingName] = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const activeGoals = useMemo(() => {
+    return goals.filter((g) => !isPendingDelete(g.goal.id));
+  }, [goals, isPendingDelete]);
 
   if (loading) {
     return <GoalsSkeleton />;
   }
 
-  const activeGoal = goals.find((g) => g.goal.id === selectedGoalId);
+  const activeGoal = activeGoals.find((g) => g.goal.id === selectedGoalId);
 
   const handleAddIncrement = (inc: number) => {
     const cur = parseFloat(contributionAmount) || 0;
@@ -96,18 +101,22 @@ export default function GoalsListScreen() {
     setDeletingName(name);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingId) return;
-    setDeleteLoading(true);
-    try {
-      await goalService.delete(deletingId);
-      refresh();
-      await reload();
-    } finally {
-      setDeleteLoading(false);
-      setDeletingId(null);
-      setDeletingName('');
-    }
+    const idToDelete = deletingId;
+    const nameToDelete = deletingName;
+    setDeletingId(null);
+    setDeletingName('');
+
+    scheduleDelete({
+      id: idToDelete,
+      message: `Goal "${nameToDelete}" deleted`,
+      onExecute: async () => {
+        await goalService.delete(idToDelete);
+        refresh();
+        await reload();
+      },
+    });
   };
 
   return (
@@ -125,7 +134,7 @@ export default function GoalsListScreen() {
 
       {/* Goal Cards */}
       <View style={{ gap: spacing.md }}>
-        {goals.length === 0 ? (
+        {activeGoals.length === 0 ? (
           <EmptyState
             icon="🏆"
             title="No savings goals yet"
@@ -134,7 +143,7 @@ export default function GoalsListScreen() {
             onAction={() => router.push('/goals/new')}
           />
         ) : (
-          goals.map(
+          activeGoals.map(
             ({
               goal,
               savedAmount,
@@ -406,7 +415,6 @@ export default function GoalsListScreen() {
         title="Delete Goal?"
         message={`"${deletingName}" and its contribution history will be soft-deleted. Your account balances are not affected.`}
         deleteLabel="Delete Goal"
-        loading={deleteLoading}
         onConfirm={() => void handleDelete()}
         onCancel={() => {
           setDeletingId(null);

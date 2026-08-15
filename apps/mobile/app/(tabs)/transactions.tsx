@@ -11,6 +11,7 @@ import { TransactionRow } from '../../src/features/transactions/components/Trans
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useTransactions } from '../../src/hooks/use-transactions';
 import { useFinance } from '../../src/providers/finance-provider';
+import { useUndoDelete } from '../../src/providers/undo-delete-provider';
 import { useTokens } from '../../src/theme/tokens';
 import type { TransactionRecord } from '../../src/database/records';
 
@@ -41,6 +42,7 @@ export default function TransactionsScreen() {
   const { colors, typography, spacing } = useTokens();
   const { transactions, loading: loadingTransactions } = useTransactions();
   const { accounts } = useAccounts();
+  const { scheduleDelete, isPendingDelete } = useUndoDelete();
   const finance = useFinance();
   const router = useRouter();
 
@@ -49,10 +51,9 @@ export default function TransactionsScreen() {
 
   // Delete confirm state
   const [pendingDeleteTx, setPendingDeleteTx] = useState<TransactionRecord | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const visible = useMemo(() => {
-    let list = transactions.filter((tx) => tx.transferLeg !== 'IN');
+    let list = transactions.filter((tx) => tx.transferLeg !== 'IN' && !isPendingDelete(tx.id));
     if (filter !== 'ALL') {
       list = list.filter((tx) => tx.type === filter);
     }
@@ -66,7 +67,7 @@ export default function TransactionsScreen() {
       );
     }
     return list;
-  }, [transactions, filter, searchQuery]);
+  }, [transactions, filter, searchQuery, isPendingDelete]);
 
   // Group transactions by transactionDate
   const grouped = useMemo(() => {
@@ -81,14 +82,14 @@ export default function TransactionsScreen() {
   }, [visible]);
 
   const counts = useMemo(() => {
-    const base = transactions.filter((tx) => tx.transferLeg !== 'IN');
+    const base = transactions.filter((tx) => tx.transferLeg !== 'IN' && !isPendingDelete(tx.id));
     return {
       ALL: base.length,
       EXPENSE: base.filter((tx) => tx.type === 'EXPENSE').length,
       INCOME: base.filter((tx) => tx.type === 'INCOME' || tx.type === 'REFUND').length,
       TRANSFER: base.filter((tx) => tx.type === 'TRANSFER').length,
     };
-  }, [transactions]);
+  }, [transactions, isPendingDelete]);
 
   if (loadingTransactions) {
     return <TransactionsSkeleton />;
@@ -101,16 +102,19 @@ export default function TransactionsScreen() {
     { id: 'TRANSFER' as const, label: 'Transfer', count: counts.TRANSFER },
   ];
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = () => {
     if (!pendingDeleteTx) return;
-    setDeleteLoading(true);
-    try {
-      await finance.transactions.softDelete(pendingDeleteTx.id);
-      finance.refresh();
-    } finally {
-      setDeleteLoading(false);
-      setPendingDeleteTx(null);
-    }
+    const target = pendingDeleteTx;
+    setPendingDeleteTx(null);
+
+    scheduleDelete({
+      id: target.id,
+      message: `Transaction of ${target.amount} ${target.currency} deleted`,
+      onExecute: async () => {
+        await finance.transactions.softDelete(target.id);
+        finance.refresh();
+      },
+    });
   };
 
   return (
@@ -185,7 +189,6 @@ export default function TransactionsScreen() {
             : ''
         }
         deleteLabel="Delete Transaction"
-        loading={deleteLoading}
         onConfirm={() => void handleDeleteConfirm()}
         onCancel={() => setPendingDeleteTx(null)}
       />
