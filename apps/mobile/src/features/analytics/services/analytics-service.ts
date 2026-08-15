@@ -132,6 +132,63 @@ export class AnalyticsService {
     return result.sort((a, b) => b.percentageOfExpenses - a.percentageOfExpenses);
   }
 
+  async getIncomeBreakdown(startDate: string, endDate: string): Promise<CategoryBreakdownItem[]> {
+    const rows = await this.transactions.listByDateRange(startDate, endDate);
+    const allCategories = await this.categories.list(true);
+
+    const incomeTransactions = rows.filter((tx) => tx.type === TransactionType.INCOME);
+    const totalIncomeAmount = incomeTransactions.reduce(
+      (sum, tx) => moneyString(parseMoney(sum).plus(parseMoney(tx.amount))),
+      '0.00',
+    );
+
+    const categoryMap = new Map<string | null, string>();
+    for (const tx of incomeTransactions) {
+      const current = categoryMap.get(tx.categoryId) ?? '0.00';
+      categoryMap.set(tx.categoryId, moneyString(parseMoney(current).plus(parseMoney(tx.amount))));
+    }
+
+    const result: CategoryBreakdownItem[] = [];
+    for (const [categoryId, earned] of categoryMap.entries()) {
+      const cat = allCategories.find((c) => c.id === categoryId);
+      const percentageOfExpenses = parseMoney(totalIncomeAmount).isPositive()
+        ? parseMoney(earned).div(parseMoney(totalIncomeAmount)).times(100).round().toNumber()
+        : 0;
+
+      result.push({
+        categoryId,
+        categoryName: cat?.name ?? 'General Income',
+        totalSpent: earned,
+        percentageOfExpenses,
+      });
+    }
+
+    return result.sort((a, b) => b.percentageOfExpenses - a.percentageOfExpenses);
+  }
+
+  async exportCsvReport(startDate: string, endDate: string): Promise<string> {
+    const txs = await this.transactions.listByDateRange(startDate, endDate);
+    const allAccounts = await this.accounts.list();
+    const allCategories = await this.categories.list(true);
+
+    const accMap = new Map(allAccounts.map((a) => [a.id, a.name]));
+    const catMap = new Map(allCategories.map((c) => [c.id, c.name]));
+
+    const headers = ['Date', 'Type', 'Amount', 'Currency', 'Category', 'Account', 'Merchant', 'Note'];
+    const rows = txs.map((tx) => [
+      `"${tx.transactionDate}"`,
+      `"${tx.type}"`,
+      `"${tx.amount}"`,
+      `"${tx.currency}"`,
+      `"${catMap.get(tx.categoryId ?? '') ?? 'Uncategorized'}"`,
+      `"${accMap.get(tx.accountId) ?? 'Unknown Account'}"`,
+      `"${tx.merchantName ?? ''}"`,
+      `"${tx.note ?? ''}"`,
+    ]);
+
+    return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+  }
+
   /**
    * Computes real multi-month cash flow history from actual transaction records
    */

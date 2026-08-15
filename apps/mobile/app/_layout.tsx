@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { AuthProvider } from '../src/providers/auth-provider';
 import { FinanceProvider } from '../src/providers/finance-provider';
 import { UndoDeleteProvider } from '../src/providers/undo-delete-provider';
 import { ThemeProvider, useThemeContext } from '../src/theme/theme-context';
@@ -40,6 +41,7 @@ function NavigationStack() {
         <Stack.Screen name="debts" />
         <Stack.Screen name="goals" />
         <Stack.Screen name="intelligence" />
+        <Stack.Screen name="auth/login" options={{ presentation: 'modal' }} />
       </Stack>
     </>
   );
@@ -48,11 +50,13 @@ function NavigationStack() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <FinanceProvider>
-        <UndoDeleteProvider>
-          <NavigationStack />
-        </UndoDeleteProvider>
-      </FinanceProvider>
+      <AuthProvider>
+        <FinanceProvider>
+          <UndoDeleteProvider>
+            <NavigationStack />
+          </UndoDeleteProvider>
+        </FinanceProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

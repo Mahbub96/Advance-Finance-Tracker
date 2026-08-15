@@ -6,7 +6,6 @@ import { Button } from '../../src/components/Button';
 import { ScrollScreen } from '../../src/components/Screen';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
-import { getAppConfig } from '@personal-finance/config';
 import { useTokens } from '../../src/theme/tokens';
 import { useThemeContext, type ThemeMode } from '../../src/theme/theme-context';
 
@@ -74,12 +73,21 @@ function HubMenuItem({
   );
 }
 
+import { useState } from 'react';
+import { DeleteConfirmModal } from '../../src/components/DeleteConfirmModal';
+import { useAuth } from '../../src/providers/auth-provider';
+
 export default function MoreScreen() {
   const { colors, typography, spacing, radius } = useTokens();
   const { accent, setAccent, mode, setMode, hideBalance, setHideBalance } = useThemeContext();
   const { settings } = useSettings();
   const finance = useFinance();
   const { analytics } = finance;
+  const { isAuthenticated, user, logout } = useAuth();
+  const router = useRouter();
+
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [syncBusy, setSyncBusy] = useState(false);
 
   const handleExportBackup = async () => {
     try {
@@ -93,7 +101,7 @@ export default function MoreScreen() {
     }
   };
 
-  const name = settings?.displayName || 'Ahmed Rahman';
+  const name = user?.displayName || settings?.displayName || 'User';
 
   return (
     <ScrollScreen>
@@ -130,11 +138,77 @@ export default function MoreScreen() {
               {name}
             </Text>
             <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              Base Currency: {settings?.baseCurrency ?? 'BDT'} · Offline Local
+              {user ? user.email : 'Local Offline Account'}
             </Text>
           </View>
-          <Badge label="ACTIVE" variant="success" size="sm" dot />
+          <Badge
+            label={isAuthenticated ? 'CLOUD SYNC' : 'OFFLINE'}
+            variant={isAuthenticated ? 'success' : 'neutral'}
+            size="sm"
+            dot
+          />
         </View>
+      </Card>
+
+      {/* 2. Multi-Device Cloud Sync Card */}
+      <Card
+        style={{
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          gap: spacing.md,
+          padding: spacing.lg,
+        }}
+      >
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ gap: 2, flex: 1 }}>
+            <Text style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 15 }]}>
+              ☁️ Multi-Device Cloud Sync
+            </Text>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              {isAuthenticated && user
+                ? `Synchronized with ${user.email}`
+                : 'Sign in to sync your accounts across multiple phones'}
+            </Text>
+          </View>
+        </View>
+
+        {isAuthenticated && user ? (
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <View style={{ flex: 1 }}>
+              <Button
+                label="🔄 Sync Now"
+                variant="primary"
+                size="sm"
+                loading={syncBusy}
+                onPress={async () => {
+                  setSyncBusy(true);
+                  const ok = await finance.syncWithApi();
+                  setSyncBusy(false);
+                  Alert.alert(
+                    ok ? 'Cloud Sync Successful' : 'Sync Queued (Offline Mode)',
+                    ok
+                      ? 'All devices up to date! Local ledger synchronized with cloud.'
+                      : 'Could not reach server. Local changes are securely saved on this device.',
+                  );
+                }}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button
+                label="Log Out"
+                variant="outline"
+                size="sm"
+                onPress={() => setShowLogoutConfirm(true)}
+              />
+            </View>
+          </View>
+        ) : (
+          <Button
+            label="🔐 Sign In / Create Account"
+            variant="primary"
+            onPress={() => router.push('/auth/login')}
+          />
+        )}
       </Card>
 
       {/* 2. Theme Customization Card */}
@@ -336,85 +410,6 @@ export default function MoreScreen() {
         />
       </View>
 
-      {/* 6. Cloud & API Server Connectivity */}
-      <Card
-        style={{
-          backgroundColor: colors.surfaceElevated,
-          borderColor: colors.border,
-          gap: spacing.sm,
-        }}
-      >
-        <View
-          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-        >
-          <View style={{ gap: 2 }}>
-            <Text style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 15 }]}>
-              ☁️ NestJS API & Cloud Sync
-            </Text>
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              Endpoint: {getAppConfig().apiUrl}
-            </Text>
-          </View>
-          <Badge
-            label={
-              finance.apiStatus === 'online'
-                ? 'API ONLINE'
-                : finance.apiStatus === 'checking'
-                  ? 'CHECKING...'
-                  : 'API OFFLINE'
-            }
-            variant={
-              finance.apiStatus === 'online'
-                ? 'success'
-                : finance.apiStatus === 'checking'
-                  ? 'warning'
-                  : 'neutral'
-            }
-            dot
-          />
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs }}>
-          <View style={{ flex: 1 }}>
-            <Button
-              label="📡 Ping API Server"
-              variant="outline"
-              size="sm"
-              onPress={async () => {
-                const ok = await finance.checkApiConnection();
-                Alert.alert(
-                  ok ? 'API Connected' : 'API Connection Failed',
-                  ok
-                    ? `Successfully reached API at ${getAppConfig().apiUrl}/health`
-                    : `Could not reach API at ${getAppConfig().apiUrl}. Ensure the server is online.`,
-                );
-              }}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Button
-              label="🔄 Sync Now"
-              variant="secondary"
-              size="sm"
-              onPress={async () => {
-                const isSynced = await finance.syncWithApi();
-                if (isSynced) {
-                  Alert.alert(
-                    'Cloud Sync Successful',
-                    'Cloud ledger synchronized with API server. All local transactions and balances are up to date.',
-                  );
-                } else {
-                  Alert.alert(
-                    'Sync Queued (Offline Mode)',
-                    'Could not reach API server. Local changes are securely saved on-device and will auto-sync when connection is restored.',
-                  );
-                }
-              }}
-            />
-          </View>
-        </View>
-      </Card>
-
       {/* 7. Backup & Developer Tools */}
       <Card
         style={{
@@ -454,6 +449,20 @@ export default function MoreScreen() {
           />
         </View>
       </Card>
+
+      {/* Logout confirmation modal */}
+      <DeleteConfirmModal
+        visible={showLogoutConfirm}
+        title="Log Out of Account?"
+        message={`Are you sure you want to log out of ${user?.email || 'your account'}?\n\nYour local ledger data will remain securely saved on this device.`}
+        deleteLabel="Log Out"
+        onConfirm={async () => {
+          setShowLogoutConfirm(false);
+          await logout();
+          Alert.alert('Logged Out', 'Your session has ended. Local offline mode is active.');
+        }}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </ScrollScreen>
   );
 }

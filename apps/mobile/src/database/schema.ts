@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 const MIGRATION_V1 = `
 CREATE TABLE IF NOT EXISTS user_settings (
@@ -201,6 +201,22 @@ CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_goal_contributions_goal ON goal_contributions(goal_id, deleted_at);
 `;
 
+const MIGRATION_V6 = `
+CREATE TABLE IF NOT EXISTS auth_session (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  email TEXT NOT NULL,
+  display_name TEXT,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT,
+  last_synced_revision INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_user_id ON auth_session(user_id);
+`;
+
 export async function migrate(db: SQLiteDatabase): Promise<void> {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const current = row?.user_version ?? 0;
@@ -228,5 +244,10 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
   if (current < 5) {
     await db.execAsync(MIGRATION_V5);
     await db.execAsync('PRAGMA user_version = 5');
+  }
+
+  if (current < 6) {
+    await db.execAsync(MIGRATION_V6);
+    await db.execAsync('PRAGMA user_version = 6');
   }
 }

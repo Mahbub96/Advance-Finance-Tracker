@@ -67,6 +67,7 @@ export default function AnalyticsScreen() {
     Array<{ label: string; income: number; expense: number }>
   >([]);
   const [categories, setCategories] = useState<CategoryBreakdownItem[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState<CategoryBreakdownItem[]>([]);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -81,10 +82,12 @@ export default function AnalyticsScreen() {
     void Promise.all([
       analytics.getCashFlow(firstDay, lastDay),
       analytics.getCategoryBreakdown(firstDay, lastDay),
+      analytics.getIncomeBreakdown(firstDay, lastDay),
       analytics.getMonthlyCashFlowHistory(6),
-    ]).then(([cf, cats, history]) => {
+    ]).then(([cf, cats, incCats, history]) => {
       setCashFlow(cf);
       setCategories(cats);
+      setIncomeCategories(incCats);
       setCashFlowHistory(history);
     }).finally(() => {
       setLoading(false);
@@ -93,7 +96,7 @@ export default function AnalyticsScreen() {
 
   const isNetPositive = parseFloat(cashFlow.netSavings) >= 0;
 
-  // Donut chart segments
+  // Expense Donut chart segments
   const donutSegments: DonutSegment[] = useMemo(() => {
     return categories.map((cat, idx) => ({
       label: cat.categoryName,
@@ -104,11 +107,22 @@ export default function AnalyticsScreen() {
     }));
   }, [categories, currency]);
 
+  // Income Donut chart segments
+  const incomeDonutSegments: DonutSegment[] = useMemo(() => {
+    return incomeCategories.map((cat, idx) => ({
+      label: cat.categoryName,
+      value: parseFloat(cat.totalSpent),
+      percentage: cat.percentageOfExpenses,
+      color: CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length] || '#10B981',
+      formattedValue: formatMoneyDisplay(cat.totalSpent, currency),
+    }));
+  }, [incomeCategories, currency]);
+
   if (loading) {
     return <AnalyticsSkeleton />;
   }
 
-  const handleExport = async () => {
+  const handleExportJson = async () => {
     setExporting(true);
     try {
       const data = await analytics.exportAllData();
@@ -118,7 +132,29 @@ export default function AnalyticsScreen() {
         message: jsonStr,
       });
     } catch {
-      Alert.alert('Export Notice', 'Data exported.');
+      Alert.alert('Export Notice', 'Data export cancelled.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      const year = currentYear;
+      const month = currentMonthIndex;
+      const yearMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const firstDay = `${yearMonth}-01`;
+      const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+      const lastDay = `${yearMonth}-${String(lastDayOfMonth).padStart(2, '0')}`;
+
+      const csvData = await analytics.exportCsvReport(firstDay, lastDay);
+      await Share.share({
+        title: `FinTrack-Ledger-${yearMonth}.csv`,
+        message: csvData,
+      });
+    } catch {
+      Alert.alert('Export Notice', 'CSV export cancelled.');
     } finally {
       setExporting(false);
     }
@@ -137,7 +173,7 @@ export default function AnalyticsScreen() {
         <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
           PERFORMANCE & REPORTS
         </Text>
-        <Text style={[typography.title, { color: colors.textPrimary }]}>Reports</Text>
+        <Text style={[typography.title, { color: colors.textPrimary }]}>Reports & Analytics</Text>
       </View>
 
       {/* Segmented Tab Bar */}
@@ -177,6 +213,13 @@ export default function AnalyticsScreen() {
       {/* TAB 1: SPENDING (Category Breakdown & Donut Chart) */}
       {activeTab === 'SPENDING' && (
         <View style={{ gap: spacing.md }}>
+          <StatCard
+            label="Total Month Expenses"
+            value={formatMoneyDisplay(cashFlow.totalExpenses, currency)}
+            indicatorColor={colors.expense}
+            icon="💸"
+          />
+
           {categories.length === 0 ? (
             <EmptyState
               icon="📊"
@@ -200,6 +243,25 @@ export default function AnalyticsScreen() {
                 totalFormatted={formatMoneyDisplay(cashFlow.totalExpenses, currency)}
                 size={180}
               />
+              <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
+                {categories.map((cat, idx) => (
+                  <View key={cat.categoryId ?? `cat-${idx}`} style={{ gap: 4 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>
+                        {cat.categoryName}
+                      </Text>
+                      <Text style={[typography.captionMedium, { color: colors.textPrimary }]}>
+                        {formatMoneyDisplay(cat.totalSpent, currency)} ({cat.percentageOfExpenses}%)
+                      </Text>
+                    </View>
+                    <ProgressBar
+                      progressPercent={cat.percentageOfExpenses}
+                      color={CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length] || '#2563EB'}
+                      height={6}
+                    />
+                  </View>
+                ))}
+              </View>
             </Card>
           )}
         </View>
@@ -214,17 +276,47 @@ export default function AnalyticsScreen() {
             indicatorColor={colors.income}
             icon="📈"
           />
-          <Card
-            style={{ backgroundColor: colors.surface, borderColor: colors.border, gap: spacing.sm }}
-          >
-            <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>
-              Income Overview
-            </Text>
-            <Text style={[typography.body, { color: colors.textSecondary }]}>
-              All salary deposits, freelance earnings, investments, and cash inflows for{' '}
-              {MONTHS[currentMonthIndex]} {currentYear}.
-            </Text>
-          </Card>
+
+          {incomeCategories.length === 0 ? (
+            <EmptyState
+              icon="💰"
+              title="No income recorded yet"
+              description="Add salary, dividends, or freelance earnings to see income distribution."
+            />
+          ) : (
+            <Card
+              style={{ backgroundColor: colors.surface, borderColor: colors.border, gap: spacing.md }}
+            >
+              <Text style={[typography.sectionTitle, { color: colors.textPrimary }]}>
+                Income by Source
+              </Text>
+              <DonutChart
+                segments={incomeDonutSegments}
+                totalLabel="Total Income"
+                totalFormatted={formatMoneyDisplay(cashFlow.totalIncome, currency)}
+                size={180}
+              />
+              <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
+                {incomeCategories.map((cat, idx) => (
+                  <View key={cat.categoryId ?? `inc-${idx}`} style={{ gap: 4 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>
+                        {cat.categoryName}
+                      </Text>
+                      <Text style={[typography.captionMedium, { color: colors.income }]}>
+                        {formatMoneyDisplay(cat.totalSpent, currency)} ({cat.percentageOfExpenses}%)
+                      </Text>
+                    </View>
+                    <ProgressBar
+                      progressPercent={cat.percentageOfExpenses}
+                      color={CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length] || '#10B981'}
+                      height={6}
+                    />
+                  </View>
+                ))}
+              </View>
+            </Card>
+          )}
         </View>
       )}
 
@@ -324,13 +416,32 @@ export default function AnalyticsScreen() {
         </View>
       )}
 
-      {/* Export Report CTA */}
-      <Button
-        label={exporting ? 'Exporting...' : '📥 Export Report'}
-        variant="outline"
-        size="lg"
-        onPress={() => void handleExport()}
-      />
+      {/* Export Report CTAs */}
+      <View style={{ gap: spacing.xs, marginTop: spacing.sm }}>
+        <Text style={[typography.captionMedium, { color: colors.textTertiary }]}>
+          EXPORT & STATEMENT TOOLS
+        </Text>
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              label={exporting ? 'Exporting...' : '📊 Export CSV'}
+              variant="outline"
+              size="md"
+              loading={exporting}
+              onPress={() => void handleExportCsv()}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="🔒 Backup JSON"
+              variant="secondary"
+              size="md"
+              loading={exporting}
+              onPress={() => void handleExportJson()}
+            />
+          </View>
+        </View>
+      </View>
     </ScrollScreen>
   );
 }

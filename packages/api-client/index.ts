@@ -116,8 +116,18 @@ export class ApiClient {
       });
     },
 
-    download: async (since?: string): Promise<SyncDownloadResponse> => {
-      const query = since ? `?since=${encodeURIComponent(since)}` : '';
+    uploadBatch: async (payload: SyncUploadBatchRequest): Promise<SyncUploadBatchResponse> => {
+      return this.fetch<SyncUploadBatchResponse>('/sync/upload', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    download: async (since?: string | number, limit?: number): Promise<SyncDownloadResponse> => {
+      const params = new URLSearchParams();
+      if (since !== undefined) params.append('since', String(since));
+      if (limit !== undefined) params.append('limit', String(limit));
+      const query = params.toString() ? `?${params.toString()}` : '';
       return this.fetch<SyncDownloadResponse>(`/sync/download${query}`);
     },
   };

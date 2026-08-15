@@ -24,6 +24,9 @@ import { InsightsService } from '../features/intelligence/services/insights-serv
 import { RecurringRuleService } from '../features/recurring/services/recurring-rule-service';
 import { TransactionService } from '../features/transactions/services/transaction-service';
 
+import { AuthRepository } from '../repositories/auth-repository';
+import { SyncEngine } from '../services/sync-engine';
+
 type FinanceServices = {
   db: SQLiteDatabase;
   api: ApiClient;
@@ -53,7 +56,22 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [nonce, setNonce] = useState(0);
   const [apiStatus, setApiStatus] = useState<'online' | 'offline' | 'checking'>('checking');
 
-  const apiClient = useMemo(() => createApiClient({ baseUrl: getAppConfig().apiUrl }), []);
+  const authRepo = useMemo(() => (db ? new AuthRepository(db) : null), [db]);
+
+  const apiClient = useMemo(() => {
+    return createApiClient({
+      baseUrl: getAppConfig().apiUrl,
+      getAuthToken: async () => {
+        if (!authRepo) return null;
+        const current = await authRepo.getSession();
+        return current?.accessToken ?? null;
+      },
+    });
+  }, [authRepo]);
+
+  const syncEngine = useMemo(() => {
+    return db ? new SyncEngine(db, apiClient) : null;
+  }, [db, apiClient]);
 
   const checkApiConnection = async (): Promise<boolean> => {
     try {
@@ -70,12 +88,13 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const syncWithApi = async (): Promise<boolean> => {
     try {
       const isOnline = await checkApiConnection();
-      if (!isOnline) return false;
-      const res = await apiClient.sync.download();
-      if (res && res.changes && res.changes.length > 0) {
+      if (!isOnline || !syncEngine) return false;
+      const summary = await syncEngine.sync();
+      if (summary.success) {
         setNonce((n) => n + 1);
+        return true;
       }
-      return true;
+      return false;
     } catch {
       return false;
     }
