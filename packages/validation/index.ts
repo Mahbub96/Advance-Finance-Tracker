@@ -16,10 +16,21 @@ export function normalizeEmail(email: string): string {
 
 export function isValidIsoDate(dateStr: string | null | undefined): boolean {
   if (!dateStr || typeof dateStr !== 'string') return false;
-  const match = /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim());
+  const trimmed = dateStr.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
   if (!match) return false;
-  const parsed = new Date(dateStr.trim());
-  return !isNaN(parsed.getTime());
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1) return false;
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
 }
 
 export function validateTypedEmailConfirmation(typed: string, expected: string): boolean {

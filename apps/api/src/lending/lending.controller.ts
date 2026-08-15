@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Inject } from '@nestjs/common';
 import type {
   LendingEmailPreviewRequest,
   LendingEmailPreviewResponse,
@@ -7,7 +7,10 @@ import { LendingReminderService } from './lending-reminder.service';
 
 @Controller('lending')
 export class LendingController {
-  constructor(private readonly lendingReminderService: LendingReminderService) {}
+  constructor(
+    @Inject(LendingReminderService)
+    private readonly lendingReminderService: LendingReminderService,
+  ) {}
 
   @Post('reminder/preview')
   @HttpCode(HttpStatus.OK)

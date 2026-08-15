@@ -36,6 +36,10 @@ export interface ApiClientConfig {
   getAuthToken?: () => Promise<string | null> | string | null;
 }
 
+type ApiEnvelope<T> = {
+  data: T;
+};
+
 export class ApiClient {
   private baseUrl: string;
   private timeoutMs: number;
@@ -81,7 +85,17 @@ export class ApiClient {
         throw new Error(errMsg);
       }
 
-      return (await res.json()) as T;
+      const payload = (await res.json()) as T | ApiEnvelope<T>;
+      if (
+        payload &&
+        typeof payload === 'object' &&
+        'data' in payload &&
+        Object.keys(payload).length === 1
+      ) {
+        return payload.data;
+      }
+
+      return payload as T;
     } finally {
       clearTimeout(timer);
     }

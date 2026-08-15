@@ -15,6 +15,12 @@ import { Card } from '../../src/components/Card';
 import { DatePickerInput } from '../../src/components/DatePickerInput';
 import { Input } from '../../src/components/Input';
 import { Screen } from '../../src/components/Screen';
+import {
+  isPositiveMoney,
+  moneyNumber,
+  validateIsoDate,
+  validatePercentage,
+} from '../../src/lib/form-validation';
 import { monthRange } from '../../src/lib/clock';
 import { useCategories } from '../../src/hooks/use-categories';
 import { useSettings } from '../../src/hooks/use-settings';
@@ -43,13 +49,16 @@ export default function NewBudgetScreen() {
   const currency = settings?.baseCurrency ?? 'BDT';
 
   // --- Real-time Field Validation ---
-  const numAmount = parseFloat(amount);
-  const isAmountValid = !isNaN(numAmount) && numAmount > 0;
+  const numAmount = moneyNumber(amount);
+  const isAmountValid = isPositiveMoney(amount);
   const amountError = submitted && !isAmountValid ? 'Enter a valid positive budget amount' : null;
   const nameError = submitted && !name.trim() ? 'Budget title is required' : null;
 
-  const isDateValid = /^\d{4}-\d{2}-\d{2}$/.test(startDate) && /^\d{4}-\d{2}-\d{2}$/.test(endDate);
-  const isDateRangeValid = isDateValid && startDate <= endDate;
+  const startDateValidation = validateIsoDate(startDate, { required: true, label: 'Start date' });
+  const endDateValidation = validateIsoDate(endDate, { required: true, label: 'End date' });
+  const isDateRangeValid =
+    startDateValidation.valid && endDateValidation.valid && startDate <= endDate;
+  const thresholdValidation = validatePercentage(threshold);
   const dateError =
     submitted && !isDateRangeValid ? 'Start date must be on or before end date' : null;
 
@@ -66,7 +75,7 @@ export default function NewBudgetScreen() {
   const handleCreate = async () => {
     setSubmitted(true);
 
-    if (!name.trim() || !isAmountValid || !isDateRangeValid) {
+    if (!name.trim() || !isAmountValid || !isDateRangeValid || !thresholdValidation.valid) {
       return;
     }
 
@@ -169,9 +178,15 @@ export default function NewBudgetScreen() {
                 label="Start Date"
                 value={startDate}
                 onChangeDate={setStartDate}
-                error={dateError}
+                error={submitted && !startDateValidation.valid ? startDateValidation.message : dateError}
               />
-              <DatePickerInput label="End Date" value={endDate} onChangeDate={setEndDate} />
+              <DatePickerInput
+                label="End Date"
+                value={endDate}
+                onChangeDate={setEndDate}
+                minDate={startDateValidation.valid ? startDate : undefined}
+                error={submitted && !endDateValidation.valid ? endDateValidation.message : null}
+              />
             </View>
 
             {/* Alert Warning Threshold */}

@@ -16,6 +16,12 @@ import { DatePickerInput } from '../../src/components/DatePickerInput';
 import { Input } from '../../src/components/Input';
 import { Screen } from '../../src/components/Screen';
 import { TextArea } from '../../src/components/TextArea';
+import {
+  isPositiveMoney,
+  moneyNumber,
+  validateIsoDate,
+} from '../../src/lib/form-validation';
+import { todayIsoDate } from '../../src/lib/clock';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useTokens } from '../../src/theme/tokens';
@@ -44,31 +50,26 @@ export default function NewGoalScreen() {
   const currency = settings?.baseCurrency ?? 'BDT';
 
   // --- Real-time Field Validation ---
-  const numTarget = parseFloat(targetAmount);
-  const isAmountValid = !isNaN(numTarget) && numTarget > 0;
+  const numTarget = moneyNumber(targetAmount);
+  const isAmountValid = isPositiveMoney(targetAmount);
   const amountError =
     submitted && !isAmountValid ? 'Enter a valid target amount greater than 0' : null;
   const nameError = submitted && !name.trim() ? 'Goal title is required' : null;
 
-  const isDateValid = !targetDate.trim() || /^\d{4}-\d{2}-\d{2}$/.test(targetDate.trim());
-  const isFutureDate = targetDate.trim()
-    ? new Date(targetDate.trim()).getTime() >= Date.now() - 86400000
-    : true;
+  const dateValidation = validateIsoDate(targetDate, { min: todayIsoDate(), label: 'Target date' });
   const dateError =
-    submitted && (!isDateValid || !isFutureDate)
-      ? 'Target date must be a future date in format YYYY-MM-DD'
-      : null;
+    submitted && !dateValidation.valid ? dateValidation.message : null;
 
   // Real-time Monthly Savings Pace Calculation
   const paceAdvice = useMemo(() => {
-    if (!isAmountValid || !targetDate.trim() || !isDateValid) return null;
+    if (!isAmountValid || !targetDate.trim() || !dateValidation.valid) return null;
     const targetTime = new Date(targetDate.trim()).getTime();
     const nowTime = Date.now();
     const diffDays = Math.max(1, Math.round((targetTime - nowTime) / (1000 * 60 * 60 * 24)));
     const months = Math.max(1, Math.ceil(diffDays / 30));
     const monthlyAmount = (numTarget / months).toFixed(2);
     return { months, monthlyAmount };
-  }, [numTarget, isAmountValid, targetDate, isDateValid]);
+  }, [numTarget, isAmountValid, targetDate, dateValidation.valid]);
 
   const handleApplyTemplate = (tmpl: (typeof GOAL_TEMPLATES)[0]) => {
     setName(tmpl.label.replace(/^[^\s]+\s/, ''));
@@ -82,7 +83,7 @@ export default function NewGoalScreen() {
   const handleCreate = async () => {
     setSubmitted(true);
 
-    if (!name.trim() || !isAmountValid || !isDateValid || !isFutureDate) {
+    if (!name.trim() || !isAmountValid || !dateValidation.valid) {
       return;
     }
 
@@ -193,6 +194,8 @@ export default function NewGoalScreen() {
                 if (submitted) setSubmitted(false);
               }}
               error={dateError}
+              minDate={todayIsoDate()}
+              optional
               helperText="Set a target deadline to calculate your required savings pace."
             />
 

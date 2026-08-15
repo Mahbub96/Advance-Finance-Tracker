@@ -1,7 +1,7 @@
 {
   "name": "@personal-finance/mobile",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.5",
   "main": "expo-router/entry",
   "scripts": {
     "dev": "expo start",
@@ -16,8 +16,8 @@
     "@personal-finance/config": "workspace:*",
     "@personal-finance/types": "workspace:*",
     "@personal-finance/validation": "workspace:*",
+    "@react-native-community/datetimepicker": "9.1.0",
     "expo": "~57.0.12",
-
     "expo-constants": "~57.0.10",
     "expo-haptics": "^57.0.1",
     "expo-linking": "~57.0.5",

@@ -19,11 +19,26 @@ describe('AuthService', () => {
     await expect(authService.register('ahmed@example.com', 'password456')).rejects.toThrow();
   });
 
+  it('rejects invalid registration input without a server error', async () => {
+    await expect(authService.register('', 'password123')).rejects.toThrow(
+      'A valid email address is required',
+    );
+    await expect(authService.register('ahmed@example.com', '123')).rejects.toThrow(
+      'Password must be at least 6 characters',
+    );
+  });
+
   it('authenticates existing user on login', async () => {
     await authService.register('ahmed@example.com', 'password123');
     const loginRes = await authService.login('ahmed@example.com', 'password123');
     expect(loginRes.user.email).toBe('ahmed@example.com');
     expect(loginRes.tokens.accessToken).toBeDefined();
+  });
+
+  it('rejects invalid login input without a server error', async () => {
+    await expect(authService.login('', 'password123')).rejects.toThrow(
+      'Invalid email or password',
+    );
   });
 
   it('validates and extracts user payload from token', async () => {

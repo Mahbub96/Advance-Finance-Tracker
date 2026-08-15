@@ -2,7 +2,7 @@
   "expo": {
     "name": "FinTrack",
     "slug": "personal-finance",
-    "version": "0.0.1",
+    "version": "0.0.5",
     "orientation": "portrait",
     "scheme": "personalfinance",
     "userInterfaceStyle": "dark",
@@ -32,7 +32,12 @@
         "backgroundColor": "#090D16"
       }
     },
-    "plugins": ["expo-router", "expo-sqlite", "expo-splash-screen"],
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-splash-screen",
+      "@react-native-community/datetimepicker"
+    ],
     "experiments": {
       "typedRoutes": true,
       "tsconfigPaths": true

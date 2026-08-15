@@ -1,4 +1,14 @@
-import { Controller, Post, Get, Body, UseGuards, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  UseGuards,
+  Req,
+  HttpCode,
+  HttpStatus,
+  Inject,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard, type AuthenticatedRequest } from './jwt-auth.guard';
 import type { AuthResponse, UserProfile } from '@personal-finance/types';
@@ -16,7 +26,7 @@ export type LoginDto = {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
   @Post('register')
   async register(@Body() body: RegisterDto): Promise<{ data: AuthResponse }> {

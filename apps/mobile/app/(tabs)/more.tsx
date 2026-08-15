@@ -15,15 +15,18 @@ function HubMenuItem({
   title,
   subtitle,
   badge,
+  tone = 'default',
 }: {
   href: Href;
   icon: string;
   title: string;
   subtitle: string;
   badge?: string;
+  tone?: 'default' | 'danger';
 }) {
   const { colors, typography, spacing, radius } = useTokens();
   const router = useRouter();
+  const isDanger = tone === 'danger';
 
   return (
     <Pressable onPress={() => router.push(href)}>
@@ -32,11 +35,12 @@ function HubMenuItem({
           style={[
             styles.menuCard,
             {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
+              backgroundColor: isDanger ? colors.dangerMuted : colors.surface,
+              borderColor: isDanger ? colors.danger : colors.border,
               paddingVertical: spacing.md,
               paddingHorizontal: spacing.lg,
               opacity: pressed ? 0.8 : 1,
+              borderWidth: isDanger ? 1.5 : 1,
             },
           ]}
         >
@@ -45,7 +49,7 @@ function HubMenuItem({
               style={[
                 styles.iconBox,
                 {
-                  backgroundColor: colors.surfaceMuted,
+                  backgroundColor: isDanger ? 'rgba(239, 68, 68, 0.16)' : colors.surfaceMuted,
                   borderRadius: radius.md,
                 },
               ]}
@@ -59,9 +63,9 @@ function HubMenuItem({
                 >
                   {title}
                 </Text>
-                {badge && <Badge label={badge} size="sm" variant="primary" />}
+                {badge && <Badge label={badge} size="sm" variant={isDanger ? 'danger' : 'primary'} />}
               </View>
-              <Text style={[typography.caption, { color: colors.textSecondary, fontSize: 12 }]}>
+              <Text style={[typography.caption, { color: isDanger ? colors.danger : colors.textSecondary, fontSize: 12 }]}>
                 {subtitle}
               </Text>
             </View>
@@ -410,19 +414,19 @@ export default function MoreScreen() {
         />
       </View>
 
-      {/* 6. Data Privacy & Security */}
+      {/* 6. Danger Zone */}
       <View style={{ gap: spacing.sm }}>
         <Text style={[typography.captionMedium, { color: colors.danger }]}>
-          DATA PRIVACY & DELETION
+          DANGER ZONE
         </Text>
         <HubMenuItem
           href={'/settings/data-deletion' as Href}
           icon="🗑️"
           title="Delete Financial Data"
-          subtitle="Permanently erase current month, year, or all ledger data"
+          subtitle="High-risk permanent deletion with confirmation and undo window"
           badge="HIGH RISK"
+          tone="danger"
         />
-
       </View>
 
       {/* 7. Backup & Developer Tools */}

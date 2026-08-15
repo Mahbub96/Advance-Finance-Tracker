@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import type { AuthResponse, UserProfile } from '@personal-finance/types';
 
 export type UserRecord = {
@@ -14,6 +19,22 @@ export type UserRecord = {
 export class AuthService {
   private readonly users = new Map<string, UserRecord>();
   private readonly userByEmail = new Map<string, string>();
+
+  private normalizeRegistrationEmail(email: string): string {
+    const normalizedEmail = email?.toLowerCase().trim();
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+      throw new BadRequestException('A valid email address is required');
+    }
+    return normalizedEmail;
+  }
+
+  private normalizeLoginEmail(email: string): string {
+    const normalizedEmail = email?.toLowerCase().trim();
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+    return normalizedEmail;
+  }
 
   // Simple token generation (base64 HMAC-like simulation without external binary dependencies)
   private createToken(
@@ -56,7 +77,7 @@ export class AuthService {
     passwordPlain: string,
     displayName?: string,
   ): Promise<AuthResponse> {
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = this.normalizeRegistrationEmail(email);
     if (this.userByEmail.has(normalizedEmail)) {
       throw new ConflictException('User with this email already exists');
     }
@@ -93,7 +114,7 @@ export class AuthService {
   }
 
   async login(email: string, passwordPlain: string): Promise<AuthResponse> {
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = this.normalizeLoginEmail(email);
     const userId = this.userByEmail.get(normalizedEmail);
     if (!userId) {
       throw new UnauthorizedException('Invalid email or password');

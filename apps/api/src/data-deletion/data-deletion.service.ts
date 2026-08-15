@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
+  Inject,
 } from '@nestjs/common';
 import {
   DataDeletionScope,
@@ -36,8 +37,11 @@ export class DataDeletionService {
   private readonly auditLogs: DataDeletionAuditRecord[] = [];
 
   constructor(
+    @Inject(AuthService)
     private readonly authService: AuthService,
+    @Inject(SyncService)
     private readonly syncService: SyncService,
+    @Inject(LendingReminderService)
     private readonly lendingReminderService: LendingReminderService,
   ) {}
 

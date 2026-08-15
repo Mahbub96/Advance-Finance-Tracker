@@ -11,8 +11,10 @@ import {
 } from 'react-native';
 import { Button } from '../../../components/Button';
 import { Card } from '../../../components/Card';
+import { DatePickerInput } from '../../../components/DatePickerInput';
 import { Input } from '../../../components/Input';
 import { Screen } from '../../../components/Screen';
+import { isMoney, validateIsoDate } from '../../../lib/form-validation';
 import { useTokens } from '../../../theme/tokens';
 import type { CreateAccountInput } from '../services/account-service';
 
@@ -48,6 +50,9 @@ export function AccountForm({
   const [name, setName] = useState(initial?.name ?? '');
   const [type, setType] = useState<AccountTypeName>(initial?.type ?? AccountType.CASH);
   const [openingBalance, setOpeningBalance] = useState(initial?.openingBalance ?? '0');
+  const [openingBalanceDate, setOpeningBalanceDate] = useState(
+    initial?.openingBalanceDate ?? new Date().toISOString().slice(0, 10),
+  );
   const [institutionName, setInstitutionName] = useState(initial?.institutionName ?? '');
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,13 +60,17 @@ export function AccountForm({
 
   // Validation
   const nameError = submitted && !name.trim() ? 'Account or wallet name is required' : null;
-  const numBalance = parseFloat(openingBalance);
-  const isBalanceValid = !isNaN(numBalance);
+  const isBalanceValid = isMoney(openingBalance);
+  const dateValidation = validateIsoDate(openingBalanceDate, {
+    required: true,
+    label: 'Opening balance date',
+  });
   const balanceError = submitted && !isBalanceValid ? 'Enter a valid opening balance number' : null;
+  const dateError = submitted && !dateValidation.valid ? dateValidation.message : null;
 
   const handleSubmit = async () => {
     setSubmitted(true);
-    if (!name.trim() || !isBalanceValid) {
+    if (!name.trim() || !isBalanceValid || !dateValidation.valid) {
       return;
     }
 
@@ -73,7 +82,7 @@ export function AccountForm({
         type,
         currency: initial?.currency ?? 'BDT',
         openingBalance: openingBalance.trim() || '0.00',
-        openingBalanceDate: initial?.openingBalanceDate ?? new Date().toISOString().slice(0, 10),
+        openingBalanceDate: openingBalanceDate.trim(),
         institutionName: institutionName.trim() || null,
       });
     } catch (err: unknown) {
@@ -201,6 +210,17 @@ export function AccountForm({
               helperText={
                 lockOpeningBalance ? 'Opening balance is locked after account creation.' : undefined
               }
+            />
+
+            <DatePickerInput
+              label="Opening Balance Date"
+              value={openingBalanceDate}
+              onChangeDate={(date) => {
+                setOpeningBalanceDate(date);
+                if (submitted) setSubmitted(false);
+              }}
+              error={dateError}
+              helperText="Used as the starting point for this account balance."
             />
 
             <Input

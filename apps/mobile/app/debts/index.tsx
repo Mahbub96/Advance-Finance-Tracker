@@ -12,6 +12,7 @@ import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'rea
 import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { DatePickerInput } from '../../src/components/DatePickerInput';
 import { DeleteConfirmModal } from '../../src/components/DeleteConfirmModal';
 import { Input } from '../../src/components/Input';
 import { ProgressBar } from '../../src/components/ProgressBar';
@@ -25,6 +26,8 @@ import { useDebts } from '../../src/hooks/use-debts';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useUndoDelete } from '../../src/providers/undo-delete-provider';
+import { todayIsoDate } from '../../src/lib/clock';
+import { isPositiveMoney, validateIsoDate } from '../../src/lib/form-validation';
 import { useTokens } from '../../src/theme/tokens';
 
 const QUICK_REPAY_INCREMENTS = [500, 1000, 2000, 5000];
@@ -58,8 +61,10 @@ export default function DebtsListScreen() {
 
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [repayAmount, setRepayAmount] = useState('');
+  const [repayDate, setRepayDate] = useState(todayIsoDate());
   const [repayAccountId, setRepayAccountId] = useState<string | null>(null);
   const [repayError, setRepayError] = useState<string | null>(null);
+  const [repayDateError, setRepayDateError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Delete confirm state
@@ -114,16 +119,23 @@ export default function DebtsListScreen() {
   const handleRepay = async () => {
     if (!selectedDebtId || !activeDebt) return;
 
-    const parsed = parseFloat(repayAmount);
-    if (isNaN(parsed) || parsed <= 0) {
+    if (!isPositiveMoney(repayAmount)) {
       setRepayError('Enter a valid repayment amount');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
-    const max = parseFloat(activeDebt.remainingAmount);
-    if (parsed > max) {
+    const parsed = parseMoney(repayAmount);
+    const max = parseMoney(activeDebt.remainingAmount);
+    if (parsed.gt(max)) {
       setRepayError(`Amount cannot exceed remaining balance of ${formatMoneyDisplay(activeDebt.remainingAmount, activeDebt.debt.currency)}`);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+
+    const dateValidation = validateIsoDate(repayDate, { required: true, label: 'Repayment date' });
+    if (!dateValidation.valid) {
+      setRepayDateError(dateValidation.message ?? 'Choose a valid repayment date');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
@@ -132,13 +144,16 @@ export default function DebtsListScreen() {
     try {
       await debtService.recordRepayment(selectedDebtId, {
         amount: repayAmount.trim(),
+        repaymentDate: repayDate,
         accountId: repayAccountId,
       });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSelectedDebtId(null);
       setRepayAmount('');
+      setRepayDate(todayIsoDate());
       setRepayAccountId(null);
       setRepayError(null);
+      setRepayDateError(null);
       refresh();
       await reload();
     } catch (err: unknown) {
@@ -353,7 +368,9 @@ export default function DebtsListScreen() {
                       void Haptics.selectionAsync();
                       setSelectedDebtId(debt.id);
                       setRepayAmount(remainingAmount);
+                      setRepayDate(todayIsoDate());
                       setRepayError(null);
+                      setRepayDateError(null);
                     }}
                   />
                   <Button
@@ -439,7 +456,9 @@ export default function DebtsListScreen() {
                       void Haptics.selectionAsync();
                       setSelectedDebtId(debt.id);
                       setRepayAmount(remainingAmount);
+                      setRepayDate(todayIsoDate());
                       setRepayError(null);
+                      setRepayDateError(null);
                     }}
                   />
                   <Button
@@ -484,6 +503,16 @@ export default function DebtsListScreen() {
                 error={repayError}
                 clearable
                 onClear={() => setRepayAmount('')}
+              />
+
+              <DatePickerInput
+                label="Repayment Date"
+                value={repayDate}
+                onChangeDate={(date) => {
+                  setRepayDate(date);
+                  setRepayDateError(null);
+                }}
+                error={repayDateError}
               />
 
               {/* Quick Increment Buttons */}
@@ -615,7 +644,10 @@ export default function DebtsListScreen() {
                   <Button
                     label="Cancel"
                     variant="secondary"
-                    onPress={() => setSelectedDebtId(null)}
+                    onPress={() => {
+                      setSelectedDebtId(null);
+                      setRepayDateError(null);
+                    }}
                   />
                 </View>
                 <View style={{ flex: 1 }}>

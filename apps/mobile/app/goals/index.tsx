@@ -5,6 +5,7 @@ import { Modal, Pressable, Text, View, StyleSheet } from 'react-native';
 import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { DatePickerInput } from '../../src/components/DatePickerInput';
 import { DeleteConfirmModal } from '../../src/components/DeleteConfirmModal';
 import { EmptyState } from '../../src/components/EmptyState';
 import { Input } from '../../src/components/Input';
@@ -16,6 +17,8 @@ import { useAccounts } from '../../src/hooks/use-accounts';
 import { useGoals } from '../../src/hooks/use-goals';
 import { useFinance } from '../../src/providers/finance-provider';
 import { useUndoDelete } from '../../src/providers/undo-delete-provider';
+import { todayIsoDate } from '../../src/lib/clock';
+import { isPositiveMoney, moneyNumber, validateIsoDate } from '../../src/lib/form-validation';
 import { useTokens } from '../../src/theme/tokens';
 
 function getGoalIcon(name: string): string {
@@ -43,8 +46,10 @@ export default function GoalsListScreen() {
 
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [contributionAmount, setContributionAmount] = useState('');
+  const [contributionDate, setContributionDate] = useState(todayIsoDate());
   const [contributionAccountId, setContributionAccountId] = useState<string | null>(null);
   const [contributionError, setContributionError] = useState<string | null>(null);
+  const [contributionDateError, setContributionDateError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Delete confirm state
@@ -62,18 +67,24 @@ export default function GoalsListScreen() {
   const activeGoal = activeGoals.find((g) => g.goal.id === selectedGoalId);
 
   const handleAddIncrement = (inc: number) => {
-    const cur = parseFloat(contributionAmount) || 0;
+    const parsed = moneyNumber(contributionAmount);
+    const cur = Number.isFinite(parsed) ? parsed : 0;
     setContributionAmount(String(cur + inc));
   };
 
   const handleContribute = async () => {
-    if (!selectedGoalId || !contributionAmount) {
+    const dateValidation = validateIsoDate(contributionDate, {
+      required: true,
+      label: 'Deposit date',
+    });
+
+    if (!selectedGoalId || !isPositiveMoney(contributionAmount)) {
       setContributionError('Please enter a valid deposit amount');
       return;
     }
-    const amt = parseFloat(contributionAmount);
-    if (isNaN(amt) || amt <= 0) {
-      setContributionError('Amount must be greater than 0');
+
+    if (!dateValidation.valid) {
+      setContributionDateError(dateValidation.message ?? 'Choose a valid deposit date');
       return;
     }
 
@@ -81,12 +92,15 @@ export default function GoalsListScreen() {
     try {
       await goalService.recordContribution(selectedGoalId, {
         amount: contributionAmount.trim(),
+        contributionDate,
         accountId: contributionAccountId,
       });
       setSelectedGoalId(null);
       setContributionAmount('');
+      setContributionDate(todayIsoDate());
       setContributionAccountId(null);
       setContributionError(null);
+      setContributionDateError(null);
       refresh();
       await reload();
     } catch (err) {
@@ -256,7 +270,9 @@ export default function GoalsListScreen() {
                         onPress={() => {
                           setSelectedGoalId(goal.id);
                           setContributionAmount('');
+                          setContributionDate(todayIsoDate());
                           setContributionError(null);
+                          setContributionDateError(null);
                         }}
                       />
                     )}
@@ -304,6 +320,16 @@ export default function GoalsListScreen() {
                 error={contributionError}
                 clearable
                 onClear={() => setContributionAmount('')}
+              />
+
+              <DatePickerInput
+                label="Deposit Date"
+                value={contributionDate}
+                onChangeDate={(date) => {
+                  setContributionDate(date);
+                  setContributionDateError(null);
+                }}
+                error={contributionDateError}
               />
 
               {/* Quick Increment Chips */}
@@ -393,7 +419,10 @@ export default function GoalsListScreen() {
                   <Button
                     label="Cancel"
                     variant="secondary"
-                    onPress={() => setSelectedGoalId(null)}
+                    onPress={() => {
+                      setSelectedGoalId(null);
+                      setContributionDateError(null);
+                    }}
                   />
                 </View>
                 <View style={{ flex: 1 }}>

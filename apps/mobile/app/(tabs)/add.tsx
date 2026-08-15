@@ -17,6 +17,7 @@ import { Button } from '../../src/components/Button';
 import { DatePickerInput } from '../../src/components/DatePickerInput';
 import { Input } from '../../src/components/Input';
 import { TextArea } from '../../src/components/TextArea';
+import { isPositiveMoney, moneyNumber, validateIsoDate } from '../../src/lib/form-validation';
 import { todayIsoDate } from '../../src/lib/clock';
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useCategories } from '../../src/hooks/use-categories';
@@ -164,9 +165,12 @@ export default function AddTransactionScreen() {
   );
 
   // Field Validations
-  const numAmount = parseFloat(amount);
-  const isAmountValid = !isNaN(numAmount) && numAmount > 0 && numAmount <= 100000000;
-  const amountError = submitted && !isAmountValid ? 'Enter a valid amount greater than 0' : null;
+  const numAmount = moneyNumber(amount);
+  const isAmountValid = isPositiveMoney(amount) && numAmount <= 100000000;
+  const dateValidation = validateIsoDate(date, { required: true, label: 'Transaction date' });
+  const amountError =
+    submitted && !isAmountValid ? 'Enter an amount greater than 0' : null;
+  const dateError = submitted && !dateValidation.valid ? dateValidation.message : null;
   const accountError = submitted && !selectedAccount ? 'Select an account' : null;
   const categoryError =
     submitted && mode !== 'TRANSFER' && !selectedCategory ? 'Select a category' : null;
@@ -179,7 +183,7 @@ export default function AddTransactionScreen() {
 
   // Real-time Balance Projection
   const projectedBalance = useMemo(() => {
-    if (!selectedAccount || isNaN(numAmount) || numAmount <= 0) return null;
+    if (!selectedAccount || !isAmountValid) return null;
     const current = parseMoney(selectedAccount.balance);
     const delta = parseMoney(amount);
     if (mode === 'INCOME') {
@@ -187,16 +191,17 @@ export default function AddTransactionScreen() {
     } else {
       return current.minus(delta).toString();
     }
-  }, [selectedAccount, amount, numAmount, mode]);
+  }, [selectedAccount, amount, isAmountValid, mode]);
 
   const handleAddQuickAmount = (val: number) => {
-    const current = parseFloat(amount) || 0;
+    const current = Number.isFinite(numAmount) ? numAmount : 0;
     setAmount(String(current + val));
   };
 
   const handleSave = async () => {
     setSubmitted(true);
     if (!isAmountValid || !selectedAccount) return;
+    if (!dateValidation.valid) return;
     if (mode !== 'TRANSFER' && !selectedCategory) return;
     if (
       mode === 'TRANSFER' &&
@@ -384,7 +389,7 @@ export default function AddTransactionScreen() {
                 <Text
                   style={[
                     styles.projectionValue,
-                    { color: parseFloat(projectedBalance) >= 0 ? '#A7F3D0' : '#FCA5A5' },
+                    { color: moneyNumber(projectedBalance) >= 0 ? '#A7F3D0' : '#FCA5A5' },
                   ]}
                 >
                   {formatMoneyDisplay(projectedBalance, selectedAccount.currency)}
@@ -692,7 +697,12 @@ export default function AddTransactionScreen() {
                 },
               ]}
             >
-              <DatePickerInput label="Custom Date" value={date} onChangeDate={setDate} />
+              <DatePickerInput
+                label="Custom Date"
+                value={date}
+                onChangeDate={setDate}
+                error={dateError}
+              />
               {mode !== 'TRANSFER' && (
                 <Input
                   label="Merchant / Payee (Optional)"

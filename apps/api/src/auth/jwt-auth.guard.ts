@@ -1,4 +1,10 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+  Inject,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 export type AuthenticatedRequest = {
@@ -8,7 +14,7 @@ export type AuthenticatedRequest = {
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly authService: AuthService) {}
+  constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();

@@ -4,7 +4,6 @@ import {
   formatMoneyDisplay,
   LendingReminderType,
 } from '@personal-finance/types';
-import { isValidEmail } from '@personal-finance/validation';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -31,6 +30,11 @@ import { TextArea } from '../../src/components/TextArea';
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useSettings } from '../../src/hooks/use-settings';
 import { useFinance } from '../../src/providers/finance-provider';
+import {
+  isPositiveMoney,
+  validateEmailWhenRequired,
+  validateIsoDate,
+} from '../../src/lib/form-validation';
 import { useTokens } from '../../src/theme/tokens';
 
 export default function NewDebtScreen() {
@@ -60,18 +64,16 @@ export default function NewDebtScreen() {
   const currency = settings?.baseCurrency ?? 'BDT';
 
   // --- Real-time Validation ---
-  const numAmount = parseFloat(amount);
-  const isAmountValid = !isNaN(numAmount) && numAmount > 0;
+  const isAmountValid = isPositiveMoney(amount);
   const amountError = submitted && !isAmountValid ? 'Enter a valid amount greater than 0' : null;
   const nameError = submitted && !personName.trim() ? 'Name of person or entity is required' : null;
-  const isDateValid = !dueDate.trim() || /^\d{4}-\d{2}-\d{2}$/.test(dueDate.trim());
-  const dateError = submitted && !isDateValid ? 'Use valid date format YYYY-MM-DD' : null;
+  const dateValidation = validateIsoDate(dueDate, { label: 'Due date' });
+  const dateError = submitted && !dateValidation.valid ? dateValidation.message : null;
 
-  const isEmailValidState = !emailReminderEnabled || isValidEmail(email);
+  const emailValidation = validateEmailWhenRequired(email, emailReminderEnabled);
+  const isEmailValidState = emailValidation.valid;
   const emailError =
-    submitted && emailReminderEnabled && !isEmailValidState
-      ? 'Please enter a valid recipient email address'
-      : null;
+    submitted && emailReminderEnabled && !isEmailValidState ? emailValidation.message : null;
 
   const typeOptions: Array<{ id: DebtTypeEnum; label: string }> = [
     { id: DebtType.LENT, label: '🤝 I Lent Money' },
@@ -80,7 +82,7 @@ export default function NewDebtScreen() {
 
   // Calculate schedule dates for preview
   const getScheduleDates = () => {
-    if (!dueDate || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate.trim())) {
+    if (!dueDate || !validateIsoDate(dueDate, { required: true }).valid) {
       return {
         sevenDaysBefore: '7 days before due date',
         threeDaysBefore: '3 days before due date',
@@ -145,7 +147,7 @@ export default function NewDebtScreen() {
   const handleCreate = async () => {
     setSubmitted(true);
 
-    if (!personName.trim() || !isAmountValid || !isDateValid || !isEmailValidState) {
+    if (!personName.trim() || !isAmountValid || !dateValidation.valid || !isEmailValidState) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
@@ -248,6 +250,7 @@ export default function NewDebtScreen() {
                 if (submitted) setSubmitted(false);
               }}
               error={dateError}
+              optional
               helperText="Used to track pending repayments and automated reminders."
             />
 

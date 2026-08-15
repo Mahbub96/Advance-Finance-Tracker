@@ -17,6 +17,8 @@ export interface DeleteConfirmModalProps {
   onCancel: () => void;
   /** When true the delete button shows a loading state */
   loading?: boolean;
+  /** Optional safety note shown above the action buttons. */
+  noticeText?: string;
 }
 
 /**
@@ -42,6 +44,7 @@ export function DeleteConfirmModal({
   onConfirm,
   onCancel,
   loading = false,
+  noticeText = '🔒 Soft delete — data can be recovered',
 }: DeleteConfirmModalProps) {
   const { colors, radius } = useTokens();
 
@@ -117,7 +120,7 @@ export function DeleteConfirmModal({
             ]}
           >
             <Text style={[styles.noticeText, { color: colors.textTertiary }]}>
-              🔒 Soft delete — data can be recovered
+              {noticeText}
             </Text>
           </View>
 

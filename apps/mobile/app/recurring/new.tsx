@@ -24,6 +24,7 @@ import { Screen } from '../../src/components/Screen';
 import { SegmentedControl } from '../../src/components/SegmentedControl';
 import { TextArea } from '../../src/components/TextArea';
 import { todayIsoDate } from '../../src/lib/clock';
+import { isPositiveMoney, validateIsoDate } from '../../src/lib/form-validation';
 import { useAccounts } from '../../src/hooks/use-accounts';
 import { useCategories } from '../../src/hooks/use-categories';
 import { useSettings } from '../../src/hooks/use-settings';
@@ -82,12 +83,11 @@ export default function NewRecurringScreen() {
   );
 
   // --- Real-time Field Validation ---
-  const numAmount = parseFloat(amount);
-  const isAmountValid = !isNaN(numAmount) && numAmount > 0;
+  const isAmountValid = isPositiveMoney(amount);
   const amountError = submitted && !isAmountValid ? 'Enter a valid amount greater than 0' : null;
   const nameError = submitted && !name.trim() ? 'Rule title is required' : null;
-  const isDateValid = /^\d{4}-\d{2}-\d{2}$/.test(startDate);
-  const dateError = submitted && !isDateValid ? 'Use valid date format YYYY-MM-DD' : null;
+  const dateValidation = validateIsoDate(startDate, { required: true, label: 'Start date' });
+  const dateError = submitted && !dateValidation.valid ? dateValidation.message : null;
   const accountError = submitted && !selectedAccount ? 'Select an account' : null;
 
   const modeOptions = [
@@ -106,7 +106,7 @@ export default function NewRecurringScreen() {
   const handleCreate = async () => {
     setSubmitted(true);
 
-    if (!name.trim() || !isAmountValid || !isDateValid || !selectedAccount) {
+    if (!name.trim() || !isAmountValid || !dateValidation.valid || !selectedAccount) {
       return;
     }
 

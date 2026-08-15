@@ -1,6 +1,7 @@
 import {
   DataDeletionScope,
   type DeletionPreviewCounts,
+  type SyncOperationRecord,
 } from '@personal-finance/types';
 import { normalizeEmail, validateTypedEmailConfirmation } from '@personal-finance/validation';
 import * as Haptics from 'expo-haptics';
@@ -20,17 +21,26 @@ import {
 import { Badge } from '../../src/components/Badge';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { DeleteConfirmModal } from '../../src/components/DeleteConfirmModal';
 import { Input } from '../../src/components/Input';
 import { Screen } from '../../src/components/Screen';
 import { SectionHeader } from '../../src/components/SectionHeader';
 import { useAuth } from '../../src/providers/auth-provider';
 import { useFinance } from '../../src/providers/finance-provider';
+import { useUndoDelete } from '../../src/providers/undo-delete-provider';
+import { AuthRepository } from '../../src/repositories/auth-repository';
+import {
+  computeLocalDeletionPreview,
+  executeLocalDataDeletion,
+  getLocalDeletionTombstones,
+} from '../../src/services/data-deletion-local';
 import { useTokens } from '../../src/theme/tokens';
 
 export default function DataDeletionScreen() {
   const { colors, spacing, typography, radius } = useTokens();
   const { api, db, refresh } = useFinance();
   const { user } = useAuth();
+  const { scheduleDelete } = useUndoDelete();
   const router = useRouter();
 
   const [scope, setScope] = useState<DataDeletionScope>(DataDeletionScope.CURRENT_MONTH);
@@ -41,6 +51,7 @@ export default function DataDeletionScreen() {
   const [periodText, setPeriodText] = useState<string>('');
   const [busy, setBusy] = useState(false);
   const [executionPhase, setExecutionPhase] = useState<string | null>(null);
+  const [showFinalConfirm, setShowFinalConfirm] = useState(false);
 
   const accountEmail = user?.email || 'user@example.com';
   const isEmailMatch = validateTypedEmailConfirmation(typedEmail, accountEmail);
@@ -83,83 +94,48 @@ export default function DataDeletionScreen() {
   }, [scope, api]);
 
   const computeLocalPreview = async (targetScope: DataDeletionScope) => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const startMonth = `${year}-${month}-01`;
-    const endMonth = `${year}-${month}-31`;
-    const startYear = `${year}-01-01`;
-    const endYear = `${year}-12-31`;
-
-    let start = '';
-    let end = '';
-
-    if (targetScope === DataDeletionScope.CURRENT_MONTH) {
-      start = startMonth;
-      end = endMonth;
-      setPeriodText(`${start} → ${end}`);
-    } else if (targetScope === DataDeletionScope.CURRENT_YEAR) {
-      start = startYear;
-      end = endYear;
-      setPeriodText(`${start} → ${end}`);
-    } else {
-      setPeriodText('All local financial records');
-    }
-
     try {
-      if (targetScope === DataDeletionScope.ALL_DATA) {
-        const [txs, accs, bgs, gls, dbs] = await Promise.all([
-          db.getAllAsync('SELECT id FROM transactions WHERE deleted_at IS NULL'),
-          db.getAllAsync('SELECT id FROM accounts WHERE deleted_at IS NULL'),
-          db.getAllAsync('SELECT id FROM budgets WHERE deleted_at IS NULL'),
-          db.getAllAsync('SELECT id FROM goals WHERE deleted_at IS NULL'),
-          db.getAllAsync('SELECT id FROM debts WHERE deleted_at IS NULL'),
-        ]);
-        setCounts({
-          transactions: txs.length,
-          accounts: accs.length,
-          budgets: bgs.length,
-          goals: gls.length,
-          debts: dbs.length,
-          debtRepayments: 0,
-          recurringRules: 0,
-          notifications: 0,
-          attachments: 0,
-          aiInsights: 0,
-        });
-      } else {
-        const [txs, dbs] = await Promise.all([
-          db.getAllAsync(
-            'SELECT id FROM transactions WHERE transaction_date >= ? AND transaction_date <= ? AND deleted_at IS NULL',
-            [start, end],
-          ),
-          db.getAllAsync(
-            'SELECT id FROM debts WHERE issue_date >= ? AND issue_date <= ? AND deleted_at IS NULL',
-            [start, end],
-          ),
-        ]);
-        setCounts({
-          transactions: txs.length,
-          accounts: 0,
-          budgets: 0,
-          goals: 0,
-          debts: dbs.length,
-          debtRepayments: 0,
-          recurringRules: 0,
-          notifications: 0,
-          attachments: 0,
-          aiInsights: 0,
-        });
-      }
+      const preview = await computeLocalDeletionPreview(db, targetScope);
+      setCounts(preview.counts);
+      setPeriodText(preview.periodText);
       setConfirmationToken(`local_token_${Date.now()}`);
     } catch {
       // ignore
     }
   };
 
-  const handleExecute = async () => {
-    if (!isEmailMatch) return;
+  const publishCloudDeletionMarkers = async () => {
+    const tombstones = await getLocalDeletionTombstones(db, scope);
+    if (tombstones.length === 0) return;
 
+    const now = new Date().toISOString();
+    const deviceId = user?.id ? `delete-${user.id.slice(0, 8)}` : 'delete-mobile-client';
+    const operations: SyncOperationRecord[] = tombstones.map((tombstone, index) => ({
+      operationId: `delete-${scope}-${tombstone.entityType}-${tombstone.entityId}-${Date.now()}-${index}`,
+      deviceId,
+      entityType: tombstone.entityType,
+      entityId: tombstone.entityId,
+      operationType: 'DELETE',
+      entityVersion: 9999,
+      payload: {
+        id: tombstone.entityId,
+        deleted_at: now,
+        deletion_scope: scope,
+      },
+      createdAt: now,
+    }));
+
+    const uploadResult = await api.sync.uploadBatch({
+      deviceId,
+      operations,
+    });
+
+    if (uploadResult.latestRevision > 0) {
+      await new AuthRepository(db).updateLastSyncedRevision(uploadResult.latestRevision);
+    }
+  };
+
+  const executeDeletion = async () => {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     setBusy(true);
     setExecutionPhase('Verifying confirmation token...');
@@ -175,46 +151,13 @@ export default function DataDeletionScreen() {
         });
       }
 
-      // 2. Perform local SQLite database purge
-      setExecutionPhase('Purging local database records...');
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const startMonth = `${year}-${month}-01`;
-      const endMonth = `${year}-${month}-31`;
-      const startYear = `${year}-01-01`;
-      const endYear = `${year}-12-31`;
+      // 2. Publish sync tombstones before removing local rows, so refresh cannot restore them.
+      setExecutionPhase('Publishing cloud deletion markers...');
+      await publishCloudDeletionMarkers();
 
-      if (scope === DataDeletionScope.ALL_DATA) {
-        await db.execAsync(`
-          DELETE FROM transactions;
-          DELETE FROM accounts;
-          DELETE FROM budgets;
-          DELETE FROM goals;
-          DELETE FROM goal_contributions;
-          DELETE FROM debts;
-          DELETE FROM debt_repayments;
-          DELETE FROM recurring_rules;
-        `);
-      } else if (scope === DataDeletionScope.CURRENT_MONTH) {
-        await db.runAsync(
-          'DELETE FROM transactions WHERE transaction_date >= ? AND transaction_date <= ?',
-          [startMonth, endMonth],
-        );
-        await db.runAsync('DELETE FROM debts WHERE issue_date >= ? AND issue_date <= ?', [
-          startMonth,
-          endMonth,
-        ]);
-      } else if (scope === DataDeletionScope.CURRENT_YEAR) {
-        await db.runAsync(
-          'DELETE FROM transactions WHERE transaction_date >= ? AND transaction_date <= ?',
-          [startYear, endYear],
-        );
-        await db.runAsync('DELETE FROM debts WHERE issue_date >= ? AND issue_date <= ?', [
-          startYear,
-          endYear,
-        ]);
-      }
+      // 3. Perform local SQLite database purge
+      setExecutionPhase('Purging local database records...');
+      await executeLocalDataDeletion(db, scope);
 
       setExecutionPhase('Refreshing local financial state...');
       refresh();
@@ -236,6 +179,30 @@ export default function DataDeletionScreen() {
       setBusy(false);
       setExecutionPhase(null);
     }
+  };
+
+  const handleExecute = () => {
+    if (!isEmailMatch || busy) return;
+    setShowFinalConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setShowFinalConfirm(false);
+    setExecutionPhase('Deletion scheduled. Use Undo within 5 seconds to cancel.');
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+
+    scheduleDelete({
+      id: `financial-data-${scope}`,
+      message: `${getActionLabel()} scheduled`,
+      durationMs: 5000,
+      onUndo: () => {
+        setExecutionPhase(null);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      },
+      onExecute: async () => {
+        await executeDeletion();
+      },
+    });
   };
 
   const getActionLabel = () => {
@@ -468,10 +435,21 @@ export default function DataDeletionScreen() {
             size="lg"
             disabled={!isEmailMatch || busy}
             loading={busy}
-            onPress={() => void handleExecute()}
+            onPress={handleExecute}
           />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <DeleteConfirmModal
+        visible={showFinalConfirm}
+        title="Delete Financial Data?"
+        message={`This will schedule ${getActionLabel().toLowerCase()} for ${periodText}. You will have 5 seconds to undo before records are permanently removed.`}
+        deleteLabel="Schedule Delete"
+        noticeText="Permanent delete — 5 second undo window"
+        loading={busy}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowFinalConfirm(false)}
+      />
     </Screen>
   );
 }

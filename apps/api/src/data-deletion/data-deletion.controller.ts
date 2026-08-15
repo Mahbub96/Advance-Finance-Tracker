@@ -6,6 +6,7 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import type {
   DataDeletionPreviewRequest,
@@ -19,7 +20,10 @@ import { DataDeletionService } from './data-deletion.service';
 @Controller('data-deletion')
 @UseGuards(JwtAuthGuard)
 export class DataDeletionController {
-  constructor(private readonly dataDeletionService: DataDeletionService) {}
+  constructor(
+    @Inject(DataDeletionService)
+    private readonly dataDeletionService: DataDeletionService,
+  ) {}
 
   @Post('preview')
   @HttpCode(HttpStatus.OK)
@@ -50,4 +54,3 @@ export class DataDeletionController {
     };
   }
 }
-

@@ -11,7 +11,7 @@ export interface PendingDeleteAction {
 }
 
 interface UndoDeleteContextValue {
-  /** Schedule a deletion with a 3-second undo grace period */
+  /** Schedule a deletion with an undo grace period */
   scheduleDelete: (action: PendingDeleteAction) => void;
   /** Check if a specific item ID is currently pending deletion */
   isPendingDelete: (id: string) => boolean;
@@ -69,7 +69,7 @@ export function UndoDeleteProvider({ children }: { children: ReactNode }) {
       }),
     ]).start();
 
-    // Shrink progress bar over 3 seconds
+    // Shrink progress bar over the configured undo duration
     Animated.timing(progressAnim, {
       toValue: 0,
       duration,
@@ -77,7 +77,7 @@ export function UndoDeleteProvider({ children }: { children: ReactNode }) {
       useNativeDriver: false,
     }).start();
 
-    // Schedule actual soft-delete execution after 3 seconds
+    // Schedule actual delete execution after the undo duration
     timerRef.current = setTimeout(async () => {
       setUndoStatus('EXECUTED');
       try {
@@ -135,7 +135,7 @@ export function UndoDeleteProvider({ children }: { children: ReactNode }) {
     <UndoDeleteContext.Provider value={{ scheduleDelete, isPendingDelete, undo: handleUndo }}>
       {children}
 
-      {/* Floating 3-Second Undo Toast */}
+      {/* Floating Undo Toast */}
       {activeAction && (
         <Animated.View
           style={[
@@ -181,7 +181,7 @@ export function UndoDeleteProvider({ children }: { children: ReactNode }) {
             )}
           </View>
 
-          {/* 3-Second Countdown Progress Bar */}
+          {/* Countdown Progress Bar */}
           {undoStatus === 'ACTIVE' && (
             <View style={styles.progressTrack}>
               <Animated.View
