@@ -24,8 +24,11 @@ export type CreateDebtInput = {
   accountId?: string | null;
   dueDate?: string | null;
   issueDate?: string;
+  email?: string | null;
+  emailReminderEnabled?: boolean;
   note?: string | null;
 };
+
 
 export type RecordDebtRepaymentInput = {
   amount: string;
@@ -117,6 +120,15 @@ export class DebtService {
       }
     }
 
+    const email = input.email?.trim() || null;
+    const emailReminderEnabled = Boolean(input.emailReminderEnabled);
+
+    if (emailReminderEnabled) {
+      if (!email || !email.includes('@')) {
+        throw new Error('Valid recipient email is required when email reminder is enabled');
+      }
+    }
+
     const now = nowIso();
     const issueDate = input.issueDate || now.slice(0, 10);
 
@@ -130,6 +142,8 @@ export class DebtService {
       dueDate: input.dueDate ?? null,
       issueDate,
       status: DebtStatus.ACTIVE,
+      email,
+      emailReminderEnabled,
       note: input.note?.trim() || null,
       createdAt: now,
       updatedAt: now,
@@ -137,6 +151,7 @@ export class DebtService {
     };
 
     await this.debts.insert(record);
+
 
     // If an account is linked, create initial cash out/in transaction
     if (input.accountId && this.transactions) {

@@ -112,4 +112,44 @@ describe('DebtService', () => {
     const storedDebt = debts.find((d) => d.id === debt.id);
     expect(storedDebt?.status).toBe(DebtStatus.REPAID);
   });
+
+  it('supports optional email and email reminder configuration', async () => {
+    const { service } = memoryRepos();
+
+    // 1. Optional email (none provided)
+    const debt1 = await service.create({
+      type: DebtType.LENT,
+      personName: 'Tanvir',
+      amount: '1500',
+      currency: 'BDT',
+    });
+    expect(debt1.email).toBeNull();
+    expect(debt1.emailReminderEnabled).toBe(false);
+
+    // 2. Valid email with email reminder enabled
+    const debt2 = await service.create({
+      type: DebtType.LENT,
+      personName: 'Rahim',
+      amount: '6000',
+      currency: 'BDT',
+      dueDate: '2026-09-20',
+      email: 'rahim@example.com',
+      emailReminderEnabled: true,
+    });
+    expect(debt2.email).toBe('rahim@example.com');
+    expect(debt2.emailReminderEnabled).toBe(true);
+
+    // 3. Reject invalid email when email reminder is enabled
+    await expect(
+      service.create({
+        type: DebtType.LENT,
+        personName: 'Karim',
+        amount: '2000',
+        currency: 'BDT',
+        email: 'invalid-email-address',
+        emailReminderEnabled: true,
+      }),
+    ).rejects.toThrow(/Valid recipient email/);
+  });
 });
+

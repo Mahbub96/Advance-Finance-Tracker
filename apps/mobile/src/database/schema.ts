@@ -1,6 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
+
+
 
 const MIGRATION_V1 = `
 CREATE TABLE IF NOT EXISTS user_settings (
@@ -217,6 +219,11 @@ CREATE TABLE IF NOT EXISTS auth_session (
 CREATE INDEX IF NOT EXISTS idx_auth_user_id ON auth_session(user_id);
 `;
 
+const MIGRATION_V7 = `
+ALTER TABLE debts ADD COLUMN email TEXT;
+ALTER TABLE debts ADD COLUMN email_reminder_enabled INTEGER NOT NULL DEFAULT 0;
+`;
+
 export async function migrate(db: SQLiteDatabase): Promise<void> {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const current = row?.user_version ?? 0;
@@ -250,4 +257,15 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
     await db.execAsync(MIGRATION_V6);
     await db.execAsync('PRAGMA user_version = 6');
   }
+
+  if (current < 7) {
+    // Check if columns already exist before altering (safe migration)
+    try {
+      await db.execAsync(MIGRATION_V7);
+    } catch {
+      // Columns may already exist in fresh DB
+    }
+    await db.execAsync('PRAGMA user_version = 7');
+  }
 }
+

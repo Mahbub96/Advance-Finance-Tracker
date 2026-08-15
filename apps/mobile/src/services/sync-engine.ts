@@ -281,8 +281,63 @@ export class SyncEngine {
           deletedAt,
         ],
       );
+    } else if (entityType === 'DEBT') {
+      const type = String(payload.type ?? 'LENT');
+      const personName = String(payload.person_name ?? payload.personName ?? 'Friend');
+      const amount = String(payload.amount ?? '0.00');
+      const currency = String(payload.currency ?? 'BDT');
+      const accountId = payload.account_id || payload.accountId ? String(payload.account_id || payload.accountId) : null;
+      const dueDate = payload.due_date || payload.dueDate ? String(payload.due_date || payload.dueDate) : null;
+      const issueDate = String(payload.issue_date ?? payload.issueDate ?? new Date().toISOString().slice(0, 10));
+      const status = String(payload.status ?? 'ACTIVE');
+      const email = payload.email ? String(payload.email) : null;
+      const emailReminderEnabled = payload.email_reminder_enabled || payload.emailReminderEnabled ? 1 : 0;
+      const note = payload.note ? String(payload.note) : null;
+      const createdAt = String(payload.created_at ?? payload.createdAt ?? new Date().toISOString());
+      const updatedAt = String(payload.updated_at ?? payload.updatedAt ?? new Date().toISOString());
+      const deletedAt = payload.deleted_at || payload.deletedAt ? String(payload.deleted_at || payload.deletedAt) : null;
+
+      await this.db.runAsync(
+        `INSERT INTO debts (
+          id, type, person_name, amount, currency, account_id, due_date,
+          issue_date, status, email, email_reminder_enabled, note,
+          created_at, updated_at, deleted_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          type = excluded.type,
+          person_name = excluded.person_name,
+          amount = excluded.amount,
+          currency = excluded.currency,
+          account_id = excluded.account_id,
+          due_date = excluded.due_date,
+          issue_date = excluded.issue_date,
+          status = excluded.status,
+          email = excluded.email,
+          email_reminder_enabled = excluded.email_reminder_enabled,
+          note = excluded.note,
+          updated_at = excluded.updated_at,
+          deleted_at = excluded.deleted_at`,
+        [
+          entityId,
+          type,
+          personName,
+          amount,
+          currency,
+          accountId,
+          dueDate,
+          issueDate,
+          status,
+          email,
+          emailReminderEnabled,
+          note,
+          createdAt,
+          updatedAt,
+          deletedAt,
+        ],
+      );
     }
   }
+
 
   private resolveTable(entityType: SyncEntityType): string | null {
     switch (entityType) {

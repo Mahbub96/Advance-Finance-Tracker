@@ -125,6 +125,49 @@ export const HealthRating = {
 
 export type HealthRating = (typeof HealthRating)[keyof typeof HealthRating];
 
+export const LendingReminderType = {
+  LENDING_DUE_7_DAYS: 'LENDING_DUE_7_DAYS',
+  LENDING_DUE_3_DAYS: 'LENDING_DUE_3_DAYS',
+  LENDING_DUE: 'LENDING_DUE',
+  LENDING_OVERDUE: 'LENDING_OVERDUE',
+} as const;
+
+export type LendingReminderType =
+  (typeof LendingReminderType)[keyof typeof LendingReminderType];
+
+export const ReminderDeliveryStatus = {
+  SCHEDULED: 'SCHEDULED',
+  QUEUED: 'QUEUED',
+  SENDING: 'SENDING',
+  SENT: 'SENT',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type ReminderDeliveryStatus =
+  (typeof ReminderDeliveryStatus)[keyof typeof ReminderDeliveryStatus];
+
+export const DataDeletionScope = {
+  CURRENT_MONTH: 'CURRENT_MONTH',
+  CURRENT_YEAR: 'CURRENT_YEAR',
+  ALL_DATA: 'ALL_DATA',
+} as const;
+
+export type DataDeletionScope =
+  (typeof DataDeletionScope)[keyof typeof DataDeletionScope];
+
+export const DataDeletionStatus = {
+  PREVIEWED: 'PREVIEWED',
+  CONFIRMED: 'CONFIRMED',
+  RUNNING: 'RUNNING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type DataDeletionStatus =
+  (typeof DataDeletionStatus)[keyof typeof DataDeletionStatus];
+
 export const ACCOUNT_TYPES = Object.values(AccountType);
 export const TRANSACTION_TYPES = Object.values(TransactionType);
 export const CATEGORY_KINDS = Object.values(CategoryKind);
@@ -137,3 +180,8 @@ export const DEBT_STATUSES = Object.values(DebtStatus);
 export const GOAL_STATUSES = Object.values(GoalStatus);
 export const INSIGHT_TYPES = Object.values(InsightType);
 export const HEALTH_RATINGS = Object.values(HealthRating);
+export const LENDING_REMINDER_TYPES = Object.values(LendingReminderType);
+export const REMINDER_DELIVERY_STATUSES = Object.values(ReminderDeliveryStatus);
+export const DATA_DELETION_SCOPES = Object.values(DataDeletionScope);
+export const DATA_DELETION_STATUSES = Object.values(DataDeletionStatus);
+

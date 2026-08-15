@@ -11,6 +11,8 @@ type DebtRow = {
   due_date: string | null;
   issue_date: string;
   status: DebtRecord['status'];
+  email: string | null;
+  email_reminder_enabled: number;
   note: string | null;
   created_at: string;
   updated_at: string;
@@ -40,6 +42,8 @@ function mapDebt(row: DebtRow): DebtRecord {
     dueDate: row.due_date,
     issueDate: row.issue_date,
     status: row.status,
+    email: row.email,
+    emailReminderEnabled: Boolean(row.email_reminder_enabled),
     note: row.note,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -62,7 +66,7 @@ function mapRepayment(row: DebtRepaymentRow): DebtRepaymentRecord {
 }
 
 const DEBT_COLUMNS = `id, type, person_name, amount, currency, account_id,
-  due_date, issue_date, status, note, created_at, updated_at, deleted_at`;
+  due_date, issue_date, status, email, email_reminder_enabled, note, created_at, updated_at, deleted_at`;
 
 const REPAYMENT_COLUMNS = `id, debt_id, amount, repayment_date, account_id,
   note, created_at, updated_at, deleted_at`;
@@ -92,8 +96,8 @@ export class DebtRepository {
     await this.db.runAsync(
       `INSERT INTO debts (
         id, type, person_name, amount, currency, account_id, due_date,
-        issue_date, status, note, created_at, updated_at, deleted_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        issue_date, status, email, email_reminder_enabled, note, created_at, updated_at, deleted_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         record.id,
         record.type,
@@ -104,6 +108,8 @@ export class DebtRepository {
         record.dueDate,
         record.issueDate,
         record.status,
+        record.email ?? null,
+        record.emailReminderEnabled ? 1 : 0,
         record.note,
         record.createdAt,
         record.updatedAt,
@@ -116,7 +122,8 @@ export class DebtRepository {
     await this.db.runAsync(
       `UPDATE debts SET
         type = ?, person_name = ?, amount = ?, currency = ?, account_id = ?,
-        due_date = ?, issue_date = ?, status = ?, note = ?, updated_at = ?, deleted_at = ?
+        due_date = ?, issue_date = ?, status = ?, email = ?, email_reminder_enabled = ?,
+        note = ?, updated_at = ?, deleted_at = ?
        WHERE id = ?`,
       [
         record.type,
@@ -127,6 +134,8 @@ export class DebtRepository {
         record.dueDate,
         record.issueDate,
         record.status,
+        record.email ?? null,
+        record.emailReminderEnabled ? 1 : 0,
         record.note,
         record.updatedAt,
         record.deletedAt,

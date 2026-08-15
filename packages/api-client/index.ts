@@ -4,6 +4,12 @@ import type {
   SyncDownloadResponse,
   SyncUploadBatchRequest,
   SyncUploadBatchResponse,
+  LendingEmailPreviewRequest,
+  LendingEmailPreviewResponse,
+  DataDeletionPreviewRequest,
+  DataDeletionPreviewResponse,
+  DataDeletionExecuteRequest,
+  DataDeletionExecuteResponse,
 } from '@personal-finance/types';
 import { DEFAULT_API_URL } from '@personal-finance/config';
 
@@ -129,6 +135,39 @@ export class ApiClient {
       if (limit !== undefined) params.append('limit', String(limit));
       const query = params.toString() ? `?${params.toString()}` : '';
       return this.fetch<SyncDownloadResponse>(`/sync/download${query}`);
+    },
+  };
+
+  /** Lending reminder preview & scheduling APIs */
+  readonly lending = {
+    previewReminder: async (
+      payload: LendingEmailPreviewRequest,
+    ): Promise<LendingEmailPreviewResponse> => {
+      return this.fetch<LendingEmailPreviewResponse>('/lending/reminder/preview', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+  };
+
+  /** High-risk secure data deletion APIs */
+  readonly dataDeletion = {
+    preview: async (
+      payload: DataDeletionPreviewRequest,
+    ): Promise<DataDeletionPreviewResponse> => {
+      return this.fetch<DataDeletionPreviewResponse>('/data-deletion/preview', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    execute: async (
+      payload: DataDeletionExecuteRequest,
+    ): Promise<DataDeletionExecuteResponse> => {
+      return this.fetch<DataDeletionExecuteResponse>('/data-deletion/execute', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
     },
   };
 }

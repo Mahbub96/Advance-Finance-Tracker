@@ -15,7 +15,9 @@
     "@personal-finance/api-client": "workspace:*",
     "@personal-finance/config": "workspace:*",
     "@personal-finance/types": "workspace:*",
+    "@personal-finance/validation": "workspace:*",
     "expo": "~57.0.12",
+
     "expo-constants": "~57.0.10",
     "expo-haptics": "^57.0.1",
     "expo-linking": "~57.0.5",

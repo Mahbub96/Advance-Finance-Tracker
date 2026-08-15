@@ -41,8 +41,10 @@ function NavigationStack() {
         <Stack.Screen name="debts" />
         <Stack.Screen name="goals" />
         <Stack.Screen name="intelligence" />
+        <Stack.Screen name="settings/data-deletion" />
         <Stack.Screen name="auth/login" options={{ presentation: 'modal' }} />
       </Stack>
+
     </>
   );
 }

@@ -10,7 +10,9 @@
     "types": ["node", "jest"],
     "paths": {
       "@personal-finance/types": ["../../packages/types/index.ts"],
-      "@personal-finance/config": ["../../packages/config/index.ts"]
+      "@personal-finance/validation": ["../../packages/validation/index.ts"],
+      "@personal-finance/config": ["../../packages/config/index.ts"],
+      "@personal-finance/api-client": ["../../packages/api-client/index.ts"]
     }
   },
   "include": ["src/**/*.ts"]

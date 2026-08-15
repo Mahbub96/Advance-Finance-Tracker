@@ -116,11 +116,14 @@ export type DebtRecord = {
   dueDate: string | null;
   issueDate: string;
   status: DebtStatus;
+  email?: string | null;
+  emailReminderEnabled?: boolean;
   note: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
 };
+
 
 export type DebtRepaymentRecord = {
   id: string;

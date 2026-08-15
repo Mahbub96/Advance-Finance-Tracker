@@ -410,6 +410,21 @@ export default function MoreScreen() {
         />
       </View>
 
+      {/* 6. Data Privacy & Security */}
+      <View style={{ gap: spacing.sm }}>
+        <Text style={[typography.captionMedium, { color: colors.danger }]}>
+          DATA PRIVACY & DELETION
+        </Text>
+        <HubMenuItem
+          href={'/settings/data-deletion' as Href}
+          icon="🗑️"
+          title="Delete Financial Data"
+          subtitle="Permanently erase current month, year, or all ledger data"
+          badge="HIGH RISK"
+        />
+
+      </View>
+
       {/* 7. Backup & Developer Tools */}
       <Card
         style={{
@@ -418,6 +433,7 @@ export default function MoreScreen() {
           gap: spacing.sm,
         }}
       >
+
         <Text style={[typography.sectionTitle, { color: colors.textPrimary, fontSize: 15 }]}>
           🔒 Local Storage & Backup
         </Text>

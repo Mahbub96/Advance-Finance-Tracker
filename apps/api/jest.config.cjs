@@ -4,4 +4,10 @@ module.exports = {
   testEnvironment: 'node',
   rootDir: 'src',
   testMatch: ['**/*.spec.ts'],
+  moduleNameMapper: {
+    '^@personal-finance/types$': '<rootDir>/../../../packages/types/index.ts',
+    '^@personal-finance/validation$': '<rootDir>/../../../packages/validation/index.ts',
+    '^@personal-finance/config$': '<rootDir>/../../../packages/config/index.ts',
+    '^@personal-finance/api-client$': '<rootDir>/../../../packages/api-client/index.ts',
+  },
 };
