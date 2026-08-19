@@ -217,7 +217,7 @@ export class SyncEngine {
           transfer_group_id = excluded.transfer_group_id,
           is_cleared = excluded.is_cleared,
           updated_at = excluded.updated_at,
-          deleted_at = excluded.deleted_at`,
+          deleted_at = COALESCE(transactions.deleted_at, excluded.deleted_at)`,
         [
           entityId,
           type,
@@ -265,7 +265,7 @@ export class SyncEngine {
           display_order = excluded.display_order,
           institution_name = excluded.institution_name,
           updated_at = excluded.updated_at,
-          deleted_at = excluded.deleted_at`,
+          deleted_at = COALESCE(accounts.deleted_at, excluded.deleted_at)`,
         [
           entityId,
           name,
@@ -316,7 +316,7 @@ export class SyncEngine {
           email_reminder_enabled = excluded.email_reminder_enabled,
           note = excluded.note,
           updated_at = excluded.updated_at,
-          deleted_at = excluded.deleted_at`,
+          deleted_at = COALESCE(debts.deleted_at, excluded.deleted_at)`,
         [
           entityId,
           type,

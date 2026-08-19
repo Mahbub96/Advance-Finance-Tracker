@@ -49,6 +49,8 @@ export default function AccountDetailScreen() {
   const [txs, setTxs] = useState<TransactionRecord[]>([]);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [archiveBusy, setArchiveBusy] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -168,6 +170,18 @@ export default function AccountDetailScreen() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    setDeleteBusy(true);
+    try {
+      await accounts.remove(account.id);
+      refresh();
+      setShowDeleteConfirm(false);
+      router.back();
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   return (
     <ScrollScreen>
       {/* 1. Header & Navigation */}
@@ -267,6 +281,12 @@ export default function AccountDetailScreen() {
             }
           }}
         />
+        <Button
+          label="Delete"
+          variant="danger"
+          size="md"
+          onPress={() => setShowDeleteConfirm(true)}
+        />
       </View>
 
       {/* 5. Account Transactions Ledger */}
@@ -304,6 +324,17 @@ export default function AccountDetailScreen() {
         loading={archiveBusy}
         onConfirm={() => void handleArchiveToggle()}
         onCancel={() => setShowArchiveConfirm(false)}
+      />
+
+      {/* Delete confirmation modal */}
+      <DeleteConfirmModal
+        visible={showDeleteConfirm}
+        title="Delete Account & Activity?"
+        message={`Are you sure you want to soft-delete "${account.name}" and all associated transactions? This action will mark records as deleted across local storage and cloud sync.`}
+        deleteLabel="Delete Account"
+        loading={deleteBusy}
+        onConfirm={() => void handleDeleteAccount()}
+        onCancel={() => setShowDeleteConfirm(false)}
       />
     </ScrollScreen>
   );

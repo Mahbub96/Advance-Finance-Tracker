@@ -104,16 +104,14 @@ export class AccountService {
 
   async remove(id: string): Promise<AccountRecord> {
     const current = await this.get(id);
-    const hasHistory = await this.accounts.hasTransactions(id);
-    if (hasHistory) {
-      return this.archive(id);
-    }
+    const now = nowIso();
     const next: AccountRecord = {
       ...current,
-      deletedAt: nowIso(),
-      updatedAt: nowIso(),
+      deletedAt: now,
+      updatedAt: now,
     };
     await this.accounts.update(next);
+    await this.accounts.softDeleteTransactions(id, now);
     return next;
   }
 

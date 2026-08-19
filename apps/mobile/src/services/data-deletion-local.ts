@@ -49,14 +49,14 @@ export function emptyDeletionCounts(): DeletionPreviewCounts {
 
 export function getAllRecordsDeleteStatements(): string[] {
   return [
-    'DELETE FROM transactions',
-    'DELETE FROM goal_contributions',
-    'DELETE FROM debt_repayments',
-    'DELETE FROM recurring_rules',
-    'DELETE FROM budgets',
-    'DELETE FROM goals',
-    'DELETE FROM debts',
-    'DELETE FROM accounts',
+    'UPDATE transactions SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+    'UPDATE goal_contributions SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+    'UPDATE debt_repayments SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+    'UPDATE recurring_rules SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+    'UPDATE budgets SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+    'UPDATE goals SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+    'UPDATE debts SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+    'UPDATE accounts SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
   ];
 }
 
@@ -199,9 +199,11 @@ export async function executeLocalDataDeletion(
   scope: DataDeletionScope,
   now = new Date(),
 ): Promise<void> {
+  const timestamp = now.toISOString();
+
   if (scope === DataDeletionScope.ALL_DATA) {
     for (const sql of getAllRecordsDeleteStatements()) {
-      await db.runAsync(sql);
+      await db.runAsync(sql, [timestamp, timestamp]);
     }
     return;
   }
@@ -209,16 +211,16 @@ export async function executeLocalDataDeletion(
   const range =
     scope === DataDeletionScope.CURRENT_MONTH ? getCurrentMonthRange(now) : getCurrentYearRange(now);
 
-  await db.runAsync('DELETE FROM transactions WHERE transaction_date >= ? AND transaction_date <= ?', [
-    range.start,
-    range.end,
-  ]);
-  await db.runAsync('DELETE FROM debt_repayments WHERE repayment_date >= ? AND repayment_date <= ?', [
-    range.start,
-    range.end,
-  ]);
-  await db.runAsync('DELETE FROM debts WHERE issue_date >= ? AND issue_date <= ?', [
-    range.start,
-    range.end,
-  ]);
+  await db.runAsync(
+    'UPDATE transactions SET deleted_at = ?, updated_at = ? WHERE transaction_date >= ? AND transaction_date <= ? AND deleted_at IS NULL',
+    [timestamp, timestamp, range.start, range.end],
+  );
+  await db.runAsync(
+    'UPDATE debt_repayments SET deleted_at = ?, updated_at = ? WHERE repayment_date >= ? AND repayment_date <= ? AND deleted_at IS NULL',
+    [timestamp, timestamp, range.start, range.end],
+  );
+  await db.runAsync(
+    'UPDATE debts SET deleted_at = ?, updated_at = ? WHERE issue_date >= ? AND issue_date <= ? AND deleted_at IS NULL',
+    [timestamp, timestamp, range.start, range.end],
+  );
 }

@@ -479,7 +479,7 @@ export default function MoreScreen() {
         onConfirm={async () => {
           setShowLogoutConfirm(false);
           await logout();
-          Alert.alert('Logged Out', 'Your session has ended. Local offline mode is active.');
+          router.replace('/auth/login');
         }}
         onCancel={() => setShowLogoutConfirm(false)}
       />

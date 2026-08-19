@@ -23,17 +23,19 @@ describe('data-deletion-local', () => {
     await executeLocalDataDeletion(db as never, DataDeletionScope.ALL_DATA);
 
     expect(db.runAsync.mock.calls.map((call) => call[0])).toEqual([
-      'DELETE FROM transactions',
-      'DELETE FROM goal_contributions',
-      'DELETE FROM debt_repayments',
-      'DELETE FROM recurring_rules',
-      'DELETE FROM budgets',
-      'DELETE FROM goals',
-      'DELETE FROM debts',
-      'DELETE FROM accounts',
+      'UPDATE transactions SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+      'UPDATE goal_contributions SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+      'UPDATE debt_repayments SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+      'UPDATE recurring_rules SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+      'UPDATE budgets SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+      'UPDATE goals SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+      'UPDATE debts SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+      'UPDATE accounts SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
     ]);
 
-    expect(getAllRecordsDeleteStatements().at(-1)).toBe('DELETE FROM accounts');
+    expect(getAllRecordsDeleteStatements().at(-1)).toBe(
+      'UPDATE accounts SET deleted_at = ?, updated_at = ? WHERE deleted_at IS NULL',
+    );
   });
 
   it('includes child tables in all-record local preview counts', async () => {
@@ -110,20 +112,21 @@ describe('data-deletion-local', () => {
   it('deletes dated child rows for period scopes', async () => {
     const db = createMockDb();
     const now = new Date(2026, 7, 15);
+    const iso = now.toISOString();
 
     await executeLocalDataDeletion(db as never, DataDeletionScope.CURRENT_MONTH, now);
 
     expect(db.runAsync).toHaveBeenCalledWith(
-      'DELETE FROM transactions WHERE transaction_date >= ? AND transaction_date <= ?',
-      ['2026-08-01', '2026-08-31'],
+      'UPDATE transactions SET deleted_at = ?, updated_at = ? WHERE transaction_date >= ? AND transaction_date <= ? AND deleted_at IS NULL',
+      [iso, iso, '2026-08-01', '2026-08-31'],
     );
     expect(db.runAsync).toHaveBeenCalledWith(
-      'DELETE FROM debt_repayments WHERE repayment_date >= ? AND repayment_date <= ?',
-      ['2026-08-01', '2026-08-31'],
+      'UPDATE debt_repayments SET deleted_at = ?, updated_at = ? WHERE repayment_date >= ? AND repayment_date <= ? AND deleted_at IS NULL',
+      [iso, iso, '2026-08-01', '2026-08-31'],
     );
     expect(db.runAsync).toHaveBeenCalledWith(
-      'DELETE FROM debts WHERE issue_date >= ? AND issue_date <= ?',
-      ['2026-08-01', '2026-08-31'],
+      'UPDATE debts SET deleted_at = ?, updated_at = ? WHERE issue_date >= ? AND issue_date <= ? AND deleted_at IS NULL',
+      [iso, iso, '2026-08-01', '2026-08-31'],
     );
   });
 });

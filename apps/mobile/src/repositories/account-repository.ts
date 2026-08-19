@@ -105,4 +105,11 @@ export class AccountRepository {
     );
     return (row?.count ?? 0) > 0;
   }
+
+  async softDeleteTransactions(accountId: string, deletedAt: string): Promise<void> {
+    await this.db.runAsync(
+      'UPDATE transactions SET deleted_at = ?, updated_at = ? WHERE account_id = ? AND deleted_at IS NULL',
+      [deletedAt, deletedAt, accountId],
+    );
+  }
 }

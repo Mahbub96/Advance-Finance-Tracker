@@ -68,7 +68,11 @@ export default function LoginScreen() {
       void syncWithApi();
 
       setTimeout(() => {
-        router.back();
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/');
+        }
       }, 700);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Authentication failed. Please check your credentials.');
@@ -83,7 +87,11 @@ export default function LoginScreen() {
       await logout();
       setSuccessMessage('Logged out. Your local offline data is safely preserved.');
       setTimeout(() => {
-        router.back();
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/');
+        }
       }, 600);
     } finally {
       setBusy(false);
@@ -103,23 +111,27 @@ export default function LoginScreen() {
         >
           {/* Top Bar / Back */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Pressable
-              onPress={() => router.back()}
-              style={({ pressed }) => [
-                styles.backButton,
-                {
-                  backgroundColor: pressed ? colors.surfaceSubtle : colors.surface,
-                  borderColor: colors.border,
-                  borderRadius: radius.md,
-                },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-            >
-              <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>✕ Close</Text>
-            </Pressable>
+            {isAuthenticated ? (
+              <Pressable
+                onPress={() => router.back()}
+                style={({ pressed }) => [
+                  styles.backButton,
+                  {
+                    backgroundColor: pressed ? colors.surfaceSubtle : colors.surface,
+                    borderColor: colors.border,
+                    borderRadius: radius.md,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+              >
+                <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>✕ Close</Text>
+              </Pressable>
+            ) : (
+              <View />
+            )}
 
-            <Text style={[typography.caption, { color: colors.textTertiary }]}>MULTI-DEVICE SYNC</Text>
+            <Text style={[typography.caption, { color: colors.textTertiary }]}>AUTHENTICATION REQUIRED</Text>
           </View>
 
           {/* Hero Header */}
@@ -240,6 +252,27 @@ export default function LoginScreen() {
                     </Text>
                   </Pressable>
                 </View>
+
+                {mode === 'LOGIN' && (
+                  <Pressable
+                    onPress={() => {
+                      setEmail('user@mahbub.dev');
+                      setPassword('user@1230');
+                    }}
+                    style={({ pressed }) => ({
+                      backgroundColor: pressed ? colors.surfaceSubtle : colors.surfaceMuted,
+                      borderColor: colors.border,
+                      borderWidth: 1,
+                      borderRadius: radius.md,
+                      padding: spacing.xs,
+                      alignItems: 'center',
+                    })}
+                  >
+                    <Text style={[typography.captionMedium, { color: colors.primary }]}>
+                      🔑 Quick Login as user@mahbub.dev
+                    </Text>
+                  </Pressable>
+                )}
 
                 <Button
                   label={mode === 'LOGIN' ? 'Sign In & Sync' : 'Create Account & Sync'}
